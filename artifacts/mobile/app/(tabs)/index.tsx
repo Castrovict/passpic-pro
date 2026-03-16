@@ -1,4 +1,4 @@
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -7,7 +7,6 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
-  Animated as RNAnimated,
   Platform,
   Pressable,
   ScrollView,
@@ -32,6 +31,7 @@ export default function CameraScreen() {
   const insets = useSafeAreaInsets();
   const { selectedCountry, setSelectedCountry, addPhoto, updatePhoto } = usePhotos();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<"front" | "back">("front");
   const isWeb = Platform.OS === "web";
 
   const topPad = isWeb ? 67 : insets.top;
@@ -41,13 +41,25 @@ export default function CameraScreen() {
     COUNTRY_FORMATS.find((c) => c.code === code)!
   ).filter(Boolean);
 
+  const toggleCamera = () => {
+    Haptics.selectionAsync();
+    setCameraFacing((prev) => (prev === "front" ? "back" : "front"));
+  };
+
   const pickImage = async (useCamera: boolean) => {
     try {
       let result;
       if (useCamera) {
         const perm = await ImagePicker.requestCameraPermissionsAsync();
         if (!perm.granted) {
-          Alert.alert("Camera Access", "Camera permission is needed to take photos.");
+          if (!perm.canAskAgain) {
+            Alert.alert(
+              "Permiso de Cámara",
+              "Activa el permiso de cámara en Ajustes para continuar."
+            );
+          } else {
+            Alert.alert("Permiso de Cámara", "Se necesita acceso a la cámara para tomar fotos.");
+          }
           return;
         }
         result = await ImagePicker.launchCameraAsync({
@@ -55,11 +67,15 @@ export default function CameraScreen() {
           allowsEditing: true,
           aspect: [3, 4],
           quality: 0.95,
+          cameraType:
+            cameraFacing === "front"
+              ? ImagePicker.CameraType.front
+              : ImagePicker.CameraType.back,
         });
       } else {
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!perm.granted) {
-          Alert.alert("Photos Access", "Photo library permission is required.");
+          Alert.alert("Acceso a Fotos", "Se necesita permiso para acceder a tu galería.");
           return;
         }
         result = await ImagePicker.launchImageLibraryAsync({
@@ -75,7 +91,7 @@ export default function CameraScreen() {
       const uri = result.assets[0].uri;
       await processPhoto(uri);
     } catch (e) {
-      Alert.alert("Error", "Failed to pick image. Please try again.");
+      Alert.alert("Error", "No se pudo abrir la cámara. Intenta de nuevo.");
     }
   };
 
@@ -202,6 +218,55 @@ export default function CameraScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeInUp.delay(400).springify()} style={styles.actions}>
+          {/* Selector cámara delantera / trasera */}
+          <View style={styles.cameraToggleRow}>
+            <Text style={styles.cameraToggleLabel}>Cámara:</Text>
+            <View style={styles.cameraToggleWrap}>
+              <Pressable
+                onPress={() => { Haptics.selectionAsync(); setCameraFacing("front"); }}
+                style={[
+                  styles.cameraToggleBtn,
+                  cameraFacing === "front" && styles.cameraToggleBtnActive,
+                ]}
+              >
+                <Feather
+                  name="user"
+                  size={15}
+                  color={cameraFacing === "front" ? Colors.white : Colors.muted}
+                />
+                <Text
+                  style={[
+                    styles.cameraToggleText,
+                    cameraFacing === "front" && styles.cameraToggleTextActive,
+                  ]}
+                >
+                  Delantera
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => { Haptics.selectionAsync(); setCameraFacing("back"); }}
+                style={[
+                  styles.cameraToggleBtn,
+                  cameraFacing === "back" && styles.cameraToggleBtnActive,
+                ]}
+              >
+                <Feather
+                  name="camera"
+                  size={15}
+                  color={cameraFacing === "back" ? Colors.white : Colors.muted}
+                />
+                <Text
+                  style={[
+                    styles.cameraToggleText,
+                    cameraFacing === "back" && styles.cameraToggleTextActive,
+                  ]}
+                >
+                  Trasera
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
           <Pressable
             onPress={() => pickImage(true)}
             disabled={isProcessing}
@@ -217,11 +282,13 @@ export default function CameraScreen() {
               style={styles.cameraBtnGradient}
             >
               <View style={styles.cameraIconRing}>
-                <Feather name="camera" size={28} color={Colors.white} />
+                <Feather name={cameraFacing === "front" ? "user" : "camera"} size={28} color={Colors.white} />
               </View>
               <View>
-                <Text style={styles.cameraBtnTitle}>Take Photo</Text>
-                <Text style={styles.cameraBtnSub}>Use camera</Text>
+                <Text style={styles.cameraBtnTitle}>Tomar Foto</Text>
+                <Text style={styles.cameraBtnSub}>
+                  Cámara {cameraFacing === "front" ? "delantera" : "trasera"}
+                </Text>
               </View>
             </LinearGradient>
           </Pressable>
@@ -235,18 +302,18 @@ export default function CameraScreen() {
             ]}
           >
             <Feather name="image" size={22} color={Colors.cobalt} />
-            <Text style={styles.galleryBtnText}>Upload Photo</Text>
+            <Text style={styles.galleryBtnText}>Subir de Galería</Text>
           </Pressable>
         </Animated.View>
 
         <Animated.View entering={FadeIn.delay(500)} style={styles.tips}>
-          <Text style={styles.tipsTitle}>Photo Tips</Text>
+          <Text style={styles.tipsTitle}>Consejos para la foto</Text>
           <View style={styles.tipsList}>
             {[
-              "Face the camera directly, look straight ahead",
-              "Ensure even lighting with no shadows",
-              "Maintain neutral expression, mouth closed",
-              "Use a plain light-colored wall as background",
+              "Mira directo a la cámara, sin inclinar la cabeza",
+              "Asegura buena iluminación uniforme, sin sombras",
+              "Mantén expresión neutral, boca cerrada",
+              "Usa una pared clara o blanca de fondo",
             ].map((tip, i) => (
               <View key={i} style={styles.tipItem}>
                 <View style={styles.tipNum}>
@@ -564,5 +631,49 @@ const styles = StyleSheet.create({
     color: Colors.muted,
     lineHeight: 18,
     flex: 1,
+  },
+  cameraToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    borderColor: Colors.silver,
+    marginBottom: 2,
+  },
+  cameraToggleLabel: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    color: Colors.navy,
+    letterSpacing: -0.2,
+  },
+  cameraToggleWrap: {
+    flexDirection: "row",
+    gap: 6,
+    backgroundColor: Colors.offWhite,
+    borderRadius: 10,
+    padding: 3,
+  },
+  cameraToggleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  cameraToggleBtnActive: {
+    backgroundColor: Colors.cobalt,
+  },
+  cameraToggleText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: Colors.muted,
+  },
+  cameraToggleTextActive: {
+    color: Colors.white,
   },
 });
