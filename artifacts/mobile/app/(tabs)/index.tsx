@@ -48,22 +48,39 @@ export default function CameraScreen() {
 
   const pickImage = async (useCamera: boolean) => {
     try {
-      let result;
+      let result: ImagePicker.ImagePickerResult;
+
+      if (useCamera && Platform.OS === "web") {
+        Alert.alert(
+          "Cámara no disponible",
+          "La cámara no está disponible en el navegador. Selecciona una foto de tu galería o usa la app en tu móvil con Expo Go.",
+          [
+            { text: "Cancelar", style: "cancel" },
+            { text: "Abrir galería", onPress: () => pickImage(false) },
+          ]
+        );
+        return;
+      }
+
       if (useCamera) {
         const perm = await ImagePicker.requestCameraPermissionsAsync();
         if (!perm.granted) {
-          if (!perm.canAskAgain) {
-            Alert.alert(
-              "Permiso de Cámara",
-              "Activa el permiso de cámara en Ajustes para continuar."
-            );
-          } else {
-            Alert.alert("Permiso de Cámara", "Se necesita acceso a la cámara para tomar fotos.");
-          }
+          Alert.alert(
+            "Permiso de Cámara",
+            perm.canAskAgain
+              ? "Se necesita acceso a la cámara para tomar fotos."
+              : "Activa el permiso de cámara en Ajustes > PassPic PRO para continuar.",
+            perm.canAskAgain
+              ? [{ text: "OK" }]
+              : [
+                  { text: "Cancelar", style: "cancel" },
+                  { text: "Ir a Ajustes", onPress: () => {} },
+                ]
+          );
           return;
         }
         result = await ImagePicker.launchCameraAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          mediaTypes: ["images"],
           allowsEditing: true,
           aspect: [3, 4],
           quality: 0.95,
@@ -75,11 +92,16 @@ export default function CameraScreen() {
       } else {
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!perm.granted) {
-          Alert.alert("Acceso a Fotos", "Se necesita permiso para acceder a tu galería.");
+          Alert.alert(
+            "Acceso a Fotos",
+            perm.canAskAgain
+              ? "Se necesita permiso para acceder a tu galería."
+              : "Activa el acceso a fotos en Ajustes > PassPic PRO para continuar."
+          );
           return;
         }
         result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          mediaTypes: ["images"],
           allowsEditing: true,
           aspect: [3, 4],
           quality: 0.95,
@@ -90,8 +112,12 @@ export default function CameraScreen() {
 
       const uri = result.assets[0].uri;
       await processPhoto(uri);
-    } catch (e) {
-      Alert.alert("Error", "No se pudo abrir la cámara. Intenta de nuevo.");
+    } catch (e: any) {
+      console.error("pickImage error:", e);
+      Alert.alert(
+        "Error",
+        `No se pudo ${useCamera ? "abrir la cámara" : "acceder a la galería"}. ${e?.message ?? "Intenta de nuevo."}`
+      );
     }
   };
 
