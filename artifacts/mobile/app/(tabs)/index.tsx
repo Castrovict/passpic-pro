@@ -26,12 +26,14 @@ import { usePhotos } from "@/context/PhotoContext";
 import { simulateValidation } from "@/utils/photoProcessing";
 import { CountryCard } from "@/components/ui/CountryCard";
 import { Button } from "@/components/ui/Button";
+import { CameraModal } from "@/components/CameraModal";
 
 export default function CameraScreen() {
   const insets = useSafeAreaInsets();
   const { selectedCountry, setSelectedCountry, addPhoto, updatePhoto } = usePhotos();
   const [isProcessing, setIsProcessing] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<"front" | "back">("front");
+  const [showCameraModal, setShowCameraModal] = useState(false);
   const isWeb = Platform.OS === "web";
 
   const topPad = isWeb ? 67 : insets.top;
@@ -46,78 +48,38 @@ export default function CameraScreen() {
     setCameraFacing((prev) => (prev === "front" ? "back" : "front"));
   };
 
-  const pickImage = async (useCamera: boolean) => {
-    try {
-      let result: ImagePicker.ImagePickerResult;
+  const openCamera = () => {
+    setShowCameraModal(true);
+  };
 
-      if (useCamera && Platform.OS === "web") {
+  const handleCameraPhoto = async (uri: string) => {
+    setShowCameraModal(false);
+    await processPhoto(uri);
+  };
+
+  const pickFromGallery = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
         Alert.alert(
-          "Cámara no disponible",
-          "La cámara no está disponible en el navegador. Selecciona una foto de tu galería o usa la app en tu móvil con Expo Go.",
-          [
-            { text: "Cancelar", style: "cancel" },
-            { text: "Abrir galería", onPress: () => pickImage(false) },
-          ]
+          "Acceso a Fotos",
+          perm.canAskAgain
+            ? "Se necesita permiso para acceder a tu galería."
+            : "Activa el acceso a fotos en Ajustes > PassPic PRO para continuar."
         );
         return;
       }
-
-      if (useCamera) {
-        const perm = await ImagePicker.requestCameraPermissionsAsync();
-        if (!perm.granted) {
-          Alert.alert(
-            "Permiso de Cámara",
-            perm.canAskAgain
-              ? "Se necesita acceso a la cámara para tomar fotos."
-              : "Activa el permiso de cámara en Ajustes > PassPic PRO para continuar.",
-            perm.canAskAgain
-              ? [{ text: "OK" }]
-              : [
-                  { text: "Cancelar", style: "cancel" },
-                  { text: "Ir a Ajustes", onPress: () => {} },
-                ]
-          );
-          return;
-        }
-        result = await ImagePicker.launchCameraAsync({
-          mediaTypes: ["images"],
-          allowsEditing: true,
-          aspect: [3, 4],
-          quality: 0.95,
-          cameraType:
-            cameraFacing === "front"
-              ? ImagePicker.CameraType.front
-              : ImagePicker.CameraType.back,
-        });
-      } else {
-        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!perm.granted) {
-          Alert.alert(
-            "Acceso a Fotos",
-            perm.canAskAgain
-              ? "Se necesita permiso para acceder a tu galería."
-              : "Activa el acceso a fotos en Ajustes > PassPic PRO para continuar."
-          );
-          return;
-        }
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ["images"],
-          allowsEditing: true,
-          aspect: [3, 4],
-          quality: 0.95,
-        });
-      }
-
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [3, 4],
+        quality: 0.95,
+      });
       if (result.canceled || !result.assets?.[0]) return;
-
-      const uri = result.assets[0].uri;
-      await processPhoto(uri);
+      await processPhoto(result.assets[0].uri);
     } catch (e: any) {
-      console.error("pickImage error:", e);
-      Alert.alert(
-        "Error",
-        `No se pudo ${useCamera ? "abrir la cámara" : "acceder a la galería"}. ${e?.message ?? "Intenta de nuevo."}`
-      );
+      console.error("pickFromGallery error:", e);
+      Alert.alert("Error", `No se pudo acceder a la galería. ${e?.message ?? "Intenta de nuevo."}`);
     }
   };
 
@@ -294,7 +256,7 @@ export default function CameraScreen() {
           </View>
 
           <Pressable
-            onPress={() => pickImage(true)}
+            onPress={openCamera}
             disabled={isProcessing}
             style={({ pressed }) => [
               styles.cameraBtn,
@@ -320,7 +282,7 @@ export default function CameraScreen() {
           </Pressable>
 
           <Pressable
-            onPress={() => pickImage(false)}
+            onPress={pickFromGallery}
             disabled={isProcessing}
             style={({ pressed }) => [
               styles.galleryBtn,
@@ -353,6 +315,13 @@ export default function CameraScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      <CameraModal
+        visible={showCameraModal}
+        initialFacing={cameraFacing}
+        onPhoto={handleCameraPhoto}
+        onClose={() => setShowCameraModal(false)}
+      />
     </View>
   );
 }
