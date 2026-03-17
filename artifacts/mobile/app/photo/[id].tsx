@@ -24,7 +24,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import ViewShot, { captureRef } from "react-native-view-shot";
+import { captureRef } from "react-native-view-shot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { COUNTRY_FORMATS } from "@/constants/countries";
@@ -46,7 +46,7 @@ export default function PhotoDetailScreen() {
   const [showPreview, setShowPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
-  const viewShotRef = useRef<ViewShot>(null);
+  const whiteBgRef = useRef<View>(null);
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
   const bottomPad = isWeb ? 34 : insets.bottom;
@@ -57,12 +57,12 @@ export default function PhotoDetailScreen() {
   const scoreAnim = useSharedValue(0);
 
   const captureWhiteBg = useCallback(async () => {
-    if (isWeb || !viewShotRef.current) return;
+    if (isWeb || !whiteBgRef.current) return;
     try {
-      const uri = await captureRef(viewShotRef, { format: "jpg", quality: 0.97 });
+      const uri = await captureRef(whiteBgRef, { format: "jpg", quality: 0.97 });
       setWhiteBgUri(uri);
     } catch (e) {
-      console.warn("[ViewShot] capture failed:", e);
+      console.warn("[captureRef] capture failed:", e);
     }
   }, [isWeb]);
 
@@ -131,14 +131,20 @@ export default function PhotoDetailScreen() {
     }
     if (!shareUri) return;
     setSaving(true);
+    const dest = `${FileSystem.cacheDirectory}passpic_save_${Date.now()}.jpg`;
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== "granted") {
+      let permGranted = false;
+      try {
+        const perm = await MediaLibrary.requestPermissionsAsync();
+        permGranted = perm.status === "granted" || perm.status === "limited";
+      } catch {
+        permGranted = true;
+      }
+      if (!permGranted) {
         Alert.alert(t.permissionDenied, t.permDesc);
         setSaving(false);
         return;
       }
-      const dest = `${FileSystem.cacheDirectory}passpic_save_${Date.now()}.jpg`;
       await FileSystem.copyAsync({ from: shareUri, to: dest });
       await MediaLibrary.saveToLibraryAsync(dest);
       setSavedOk(true);
@@ -146,6 +152,17 @@ export default function PhotoDetailScreen() {
       setTimeout(() => setSavedOk(false), 3000);
     } catch (e: any) {
       console.warn("[Save] error:", e?.message);
+      try {
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          setSaving(false);
+          await Sharing.shareAsync(dest.startsWith("file://") ? dest : shareUri, {
+            mimeType: "image/jpeg",
+            dialogTitle: lang === "es" ? "Guardar foto de pasaporte" : "Save passport photo",
+          });
+          return;
+        }
+      } catch { /* ignore */ }
       Alert.alert("Error", t.saveError);
     } finally {
       setSaving(false);
@@ -215,12 +232,8 @@ export default function PhotoDetailScreen() {
         ) : (
           <>
             <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.photoFrame}>
-              <ViewShot
-                ref={viewShotRef}
-                options={{ format: "jpg", quality: 0.97 }}
-                style={styles.viewShotWrap}
-              >
-                <View style={styles.whiteBgContainer}>
+              <View style={styles.viewShotWrap}>
+                <View ref={whiteBgRef} style={styles.whiteBgContainer} collapsable={false}>
                   <View
                     style={[
                       styles.passportFrame,
@@ -251,7 +264,7 @@ export default function PhotoDetailScreen() {
                     </View>
                   </View>
                 </View>
-              </ViewShot>
+              </View>
 
               {whiteBgUri && (
                 <Animated.View entering={FadeIn.delay(200)} style={styles.bgDoneBadge}>
