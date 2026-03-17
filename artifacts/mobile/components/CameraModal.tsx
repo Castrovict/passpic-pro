@@ -3,7 +3,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import type { CameraType } from "expo-camera";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -15,18 +15,13 @@ import {
 } from "react-native";
 import Animated, {
   FadeIn,
-  FadeOut,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
   withSequence,
   withTiming,
-  cancelAnimation,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-
-const API_DOMAIN = process.env.EXPO_PUBLIC_DOMAIN ?? "";
 
 interface CameraModalProps {
   visible: boolean;
@@ -34,24 +29,6 @@ interface CameraModalProps {
   onPhoto: (uri: string) => void;
   onClose: () => void;
 }
-
-// ── Face check types ─────────────────────────────────────────────────────────
-type FaceStatus = "no_face" | "too_far" | "too_close" | "tilted" | "off_center" | "ready";
-
-interface FaceResult {
-  status: FaceStatus;
-  message: string;
-  messageEs: string;
-}
-
-const STATUS_MAP: Record<FaceStatus, { color: string; icon: string }> = {
-  no_face:    { color: "rgba(255,80,80,0.9)",   icon: "user-x" },
-  too_far:    { color: "rgba(255,160,0,0.9)",   icon: "zoom-in" },
-  too_close:  { color: "rgba(255,160,0,0.9)",   icon: "zoom-out" },
-  tilted:     { color: "rgba(255,160,0,0.9)",   icon: "rotate-cw" },
-  off_center: { color: "rgba(255,160,0,0.9)",   icon: "move" },
-  ready:      { color: "rgba(34,197,94,0.92)",  icon: "check-circle" },
-};
 
 // ── Main component ────────────────────────────────────────────────────────────
 export function CameraModal({
@@ -70,20 +47,11 @@ export function CameraModal({
   const [isTaking, setIsTaking] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
-
-  // ── Face detection state ────────────────────────────────────────────────
-  const [faceResult, setFaceResult] = useState<FaceResult | null>(null);
-  const analyzeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Use refs for all flags that must be synchronously reliable
-  const analyzingRef = useRef(false);
   const isTakingRef = useRef(false);
 
   // ── Animations ──────────────────────────────────────────────────────────
   const shutterScale = useSharedValue(1);
   const flashOpacity = useSharedValue(0);
-  // 0=white (no result), 1=warning (orange), 2=ready (green)
-  const ovalState = useSharedValue(0);
-  const ovalPulse = useSharedValue(1);
 
   const shutterStyle = useAnimatedStyle(() => ({
     transform: [{ scale: shutterScale.value }],
@@ -92,102 +60,10 @@ export function CameraModal({
     opacity: flashOpacity.value,
   }));
 
-  const ovalBorderStyle = useAnimatedStyle(() => {
-    const colors = [
-      "rgba(255,255,255,0.88)",
-      "rgba(255,160,50,0.9)",
-      "rgba(34,197,94,0.95)",
-    ];
-    return {
-      borderColor: colors[Math.round(ovalState.value)] ?? colors[0],
-      transform: [{ scale: ovalPulse.value }],
-    };
-  });
-
-  // Pulse animation when ready
-  useEffect(() => {
-    if (faceResult?.status === "ready") {
-      ovalPulse.value = withRepeat(
-        withSequence(
-          withTiming(1.04, { duration: 500 }),
-          withTiming(1, { duration: 500 })
-        ),
-        -1,
-        true
-      );
-    } else {
-      cancelAnimation(ovalPulse);
-      ovalPulse.value = withTiming(1, { duration: 150 });
-    }
-  }, [faceResult?.status]);
-
-  // ── Face analysis via server ─────────────────────────────────────────────
-  // Uses a ref flag (not state) so checks are always synchronous
-  const analyzeFrame = useCallback(async () => {
-    if (!cameraRef.current) return;
-    if (isTakingRef.current) return;   // real capture in progress
-    if (analyzingRef.current) return;  // analysis already running
-    if (!API_DOMAIN) return;
-
-    analyzingRef.current = true;
-    try {
-      const snap = await cameraRef.current.takePictureAsync({
-        quality: 0.15,        // very low quality is enough for analysis
-        skipProcessing: true, // skip EXIF rotation etc.
-        base64: true,         // get base64 directly, no file written
-      });
-      if (!snap?.base64 || isTakingRef.current) return;
-
-      const res = await fetch(`https://${API_DOMAIN}/api/analyze-face`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image_base64: snap.base64 }),
-        signal: AbortSignal.timeout(4000),
-      });
-
-      if (!res.ok || isTakingRef.current) return;
-      const data = (await res.json()) as FaceResult;
-
-      // Don't update UI if a real capture started while we were analyzing
-      if (!isTakingRef.current) {
-        setFaceResult(data);
-        ovalState.value = withTiming(data.status === "ready" ? 2 : 1, { duration: 300 });
-      }
-    } catch {
-      // Silently swallow timeouts / network errors — camera UX is unaffected
-    } finally {
-      analyzingRef.current = false;
-    }
-  }, []); // no deps — uses only refs + ovalState (stable)
-
-  // Start/stop periodic analysis when modal opens/closes
-  useEffect(() => {
-    if (!visible || isWeb || !API_DOMAIN) return;
-
-    // First analysis after 800ms
-    const initial = setTimeout(() => analyzeFrame(), 800);
-    // Then every 2 seconds
-    analyzeTimerRef.current = setInterval(() => analyzeFrame(), 2000);
-
-    return () => {
-      clearTimeout(initial);
-      if (analyzeTimerRef.current) {
-        clearInterval(analyzeTimerRef.current);
-        analyzeTimerRef.current = null;
-      }
-      analyzingRef.current = false;
-      isTakingRef.current = false;
-      setFaceResult(null);
-      ovalState.value = 0;
-    };
-  }, [visible, isWeb]);
-
   // ── Camera actions ───────────────────────────────────────────────────────
   const flipCamera = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setFacing((prev) => (prev === "front" ? "back" : "front"));
-    setFaceResult(null);
-    ovalState.value = withTiming(0, { duration: 200 });
   };
 
   const toggleFlash = () => {
@@ -197,16 +73,9 @@ export function CameraModal({
 
   const takePhoto = async () => {
     if (!cameraRef.current || isTakingRef.current) return;
-
-    // Block analysis immediately (synchronous ref)
     isTakingRef.current = true;
-    analyzingRef.current = false; // allow analyzeFrame to stop gracefully
-    if (analyzeTimerRef.current) {
-      clearInterval(analyzeTimerRef.current);
-      analyzeTimerRef.current = null;
-    }
-
     setIsTaking(true);
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     shutterScale.value = withSequence(
       withTiming(0.88, { duration: 80 }),
@@ -218,8 +87,6 @@ export function CameraModal({
     );
 
     try {
-      // Small delay to let any in-flight analysis snapshot finish
-      await new Promise((r) => setTimeout(r, 120));
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.95,
         skipProcessing: false,
@@ -289,8 +156,6 @@ export function CameraModal({
     );
   }
 
-  const statusInfo = faceResult ? STATUS_MAP[faceResult.status] : null;
-
   return (
     <Modal visible={visible} animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.container}>
@@ -301,6 +166,7 @@ export function CameraModal({
           flash={flash}
         />
 
+        {/* Flash white overlay (only on real capture) */}
         <Animated.View style={[StyleSheet.absoluteFill, styles.flashOverlay, flashStyle]} pointerEvents="none" />
 
         {/* Top bar */}
@@ -334,7 +200,7 @@ export function CameraModal({
 
         {/* ICAO face guide overlay */}
         <View style={styles.guide} pointerEvents="none">
-          <Animated.View style={[styles.oval, ovalBorderStyle]}>
+          <View style={styles.oval}>
             {/* Eye level indicator — ICAO: eyes ~35% from top */}
             <View style={styles.eyeLine}>
               <View style={styles.eyeLineDash} />
@@ -345,30 +211,19 @@ export function CameraModal({
             </View>
             <View style={[styles.marker, styles.markerTop]} />
             <View style={[styles.marker, styles.markerBottom]} />
-          </Animated.View>
+          </View>
 
-          {/* Status badge (below oval) */}
-          {statusInfo && faceResult ? (
-            <Animated.View
-              entering={FadeIn.duration(200)}
-              exiting={FadeOut.duration(150)}
-              style={[styles.statusBadge, { backgroundColor: statusInfo.color }]}
-            >
-              <Feather name={statusInfo.icon as any} size={14} color="#fff" />
-              <Text style={styles.statusText}>{faceResult.messageEs}</Text>
-            </Animated.View>
-          ) : (
-            <View style={styles.guideHints}>
-              <Text style={styles.guideTitle}>Centra tu cara en el óvalo</Text>
-              <Text style={styles.guideSubtitle}>
-                Ojos en la línea amarilla · Cabeza erguida · Fondo neutro
-              </Text>
-            </View>
-          )}
+          {/* Static guide hints below oval */}
+          <View style={styles.guideHints}>
+            <Text style={styles.guideTitle}>Centra tu cara en el óvalo</Text>
+            <Text style={styles.guideSubtitle}>
+              Ojos en la línea amarilla · Cabeza erguida · Fondo neutro
+            </Text>
+          </View>
         </View>
 
-        {/* Biometric checklist (top-right corner) */}
-        <BiometricChecklist status={faceResult?.status ?? null} />
+        {/* Static checklist (top-right corner) */}
+        <StaticChecklist />
 
         {/* Bottom controls */}
         <LinearGradient
@@ -383,13 +238,7 @@ export function CameraModal({
           </Pressable>
 
           <Pressable onPress={takePhoto} disabled={isTaking} hitSlop={8}>
-            <Animated.View
-              style={[
-                styles.shutterOuter,
-                shutterStyle,
-                faceResult?.status === "ready" && styles.shutterReady,
-              ]}
-            >
+            <Animated.View style={[styles.shutterOuter, shutterStyle]}>
               <View style={styles.shutterInner}>
                 {isTaking ? (
                   <ActivityIndicator color={Colors.navy} size="small" />
@@ -410,43 +259,21 @@ export function CameraModal({
   );
 }
 
-// ── Biometric checklist component ─────────────────────────────────────────────
-function BiometricChecklist({ status }: { status: FaceStatus | null }) {
-  const checks = [
-    {
-      id: "face",
-      label: "Rostro visible",
-      ok: status !== null && status !== "no_face",
-    },
-    {
-      id: "dist",
-      label: "Distancia correcta",
-      ok: status !== null && status !== "too_far" && status !== "too_close" && status !== "no_face",
-    },
-    {
-      id: "angle",
-      label: "Cabeza recta",
-      ok: status !== null && status !== "tilted" && status !== "no_face",
-    },
-    {
-      id: "center",
-      label: "Centrado",
-      ok: status !== null && status !== "off_center" && status !== "no_face",
-    },
+// ── Static checklist — always visible, no periodic snapshots ─────────────────
+function StaticChecklist() {
+  const tips = [
+    { id: "face",   label: "Rostro visible" },
+    { id: "dist",   label: "Distancia correcta" },
+    { id: "angle",  label: "Cabeza recta" },
+    { id: "center", label: "Centrado" },
   ];
-
-  if (status === null) return null;
 
   return (
     <Animated.View entering={FadeIn.delay(300)} style={styles.checklist}>
-      {checks.map((c) => (
-        <View key={c.id} style={styles.checkRow}>
-          <Feather
-            name={c.ok ? "check-circle" : "circle"}
-            size={12}
-            color={c.ok ? "rgba(34,197,94,0.95)" : "rgba(255,255,255,0.45)"}
-          />
-          <Text style={[styles.checkLabel, c.ok && styles.checkLabelOk]}>{c.label}</Text>
+      {tips.map((t) => (
+        <View key={t.id} style={styles.checkRow}>
+          <Feather name="circle" size={12} color="rgba(255,255,255,0.55)" />
+          <Text style={styles.checkLabel}>{t.label}</Text>
         </View>
       ))}
     </Animated.View>
@@ -497,20 +324,13 @@ const styles = StyleSheet.create({
   guideHints: { marginTop: 18, alignItems: "center", gap: 4, paddingHorizontal: 20 },
   guideTitle: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: Colors.white, textAlign: "center", letterSpacing: -0.2 },
   guideSubtitle: { fontFamily: "Inter_400Regular", fontSize: 11.5, color: "rgba(255,255,255,0.62)", textAlign: "center" },
-  statusBadge: {
-    flexDirection: "row", alignItems: "center", gap: 7,
-    marginTop: 16, paddingHorizontal: 14, paddingVertical: 9,
-    borderRadius: 22, maxWidth: 280,
-  },
-  statusText: { fontFamily: "Inter_600SemiBold", fontSize: 13, color: "#fff", flexShrink: 1 },
   checklist: {
     position: "absolute", top: 100, right: 16, zIndex: 6,
     backgroundColor: "rgba(0,0,0,0.55)", borderRadius: 12,
     paddingVertical: 10, paddingHorizontal: 12, gap: 8,
   },
   checkRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  checkLabel: { fontFamily: "Inter_500Medium", fontSize: 11, color: "rgba(255,255,255,0.5)" },
-  checkLabelOk: { color: "rgba(255,255,255,0.9)" },
+  checkLabel: { fontFamily: "Inter_500Medium", fontSize: 11, color: "rgba(255,255,255,0.75)" },
   bottomBar: {
     position: "absolute", bottom: 0, left: 0, right: 0,
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
@@ -522,7 +342,6 @@ const styles = StyleSheet.create({
     width: 78, height: 78, borderRadius: 39,
     borderWidth: 4, borderColor: Colors.white, alignItems: "center", justifyContent: "center",
   },
-  shutterReady: { borderColor: "rgba(34,197,94,0.95)" },
   shutterInner: {
     width: 62, height: 62, borderRadius: 31,
     backgroundColor: Colors.white, alignItems: "center", justifyContent: "center",
