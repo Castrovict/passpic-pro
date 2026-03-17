@@ -249,7 +249,7 @@ export default function PhotoDetailScreen() {
                       <Image
                         source={{ uri: photo.processedUri }}
                         style={styles.photo}
-                        contentFit="contain"
+                        contentFit="cover"
                         contentPosition="top center"
                         onLoadEnd={captureWhiteBg}
                       />
@@ -481,7 +481,7 @@ export default function PhotoDetailScreen() {
                       <Image
                         source={{ uri: shareUri }}
                         style={styles.docPhoto}
-                        contentFit="contain"
+                        contentFit="cover"
                         contentPosition="top center"
                       />
                     ) : (

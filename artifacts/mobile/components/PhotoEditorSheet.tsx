@@ -211,7 +211,8 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
       const cropW = Math.round(w * factor);
       const cropH = Math.round(h * factor);
       const originX = Math.round((w - cropW) / 2);
-      const originY = Math.round((h - cropH) * 0.30);
+      // ICAO 9303: eyes at ~35% from top of frame → bias crop origin toward upper-middle
+      const originY = Math.round((h - cropH) * 0.35);
       const result = await ImageManipulator.manipulateAsync(
         imageUri,
         [

@@ -196,14 +196,30 @@ export function CameraModal({
           </Animated.View>
         </LinearGradient>
 
-        <View style={styles.guide}>
-          <View style={styles.guideFrame}>
-            <View style={[styles.corner, styles.cornerTL]} />
-            <View style={[styles.corner, styles.cornerTR]} />
-            <View style={[styles.corner, styles.cornerBL]} />
-            <View style={[styles.corner, styles.cornerBR]} />
+        {/* ICAO face guide overlay */}
+        <View style={styles.guide} pointerEvents="none">
+          {/* Face oval guide */}
+          <View style={styles.oval}>
+            {/* Eye level indicator — ICAO: ~35% from top of face oval */}
+            <View style={styles.eyeLine}>
+              <View style={styles.eyeLineDash} />
+              <View style={styles.eyeLineLabel}>
+                <Text style={styles.eyeLineTxt}>OJOS</Text>
+              </View>
+              <View style={styles.eyeLineDash} />
+            </View>
+            {/* Crown / chin tick marks */}
+            <View style={[styles.marker, styles.markerTop]} />
+            <View style={[styles.marker, styles.markerBottom]} />
           </View>
-          <Text style={styles.guideText}>Centra tu cara dentro del marco</Text>
+
+          {/* Instruction text */}
+          <View style={styles.guideHints}>
+            <Text style={styles.guideTitle}>Centra tu cara en el óvalo</Text>
+            <Text style={styles.guideSubtitle}>
+              Ojos en la línea amarilla · Cabeza erguida · Fondo neutro
+            </Text>
+          </View>
         </View>
 
         <LinearGradient
@@ -239,9 +255,9 @@ export function CameraModal({
   );
 }
 
-const FRAME_SIZE = 240;
-const CORNER = 24;
-const CORNER_THICKNESS = 3;
+const OVAL_W = 220;
+const OVAL_H = 290; // ~35:45mm passport ratio
+const EYE_TOP_PCT = 0.35; // ICAO: eyes at 35% from top of face oval
 
 const styles = StyleSheet.create({
   container: {
@@ -293,55 +309,72 @@ const styles = StyleSheet.create({
   },
   guide: {
     ...StyleSheet.absoluteFillObject,
+    zIndex: 5,
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 5,
-    pointerEvents: "none" as any,
   },
-  guideFrame: {
-    width: FRAME_SIZE,
-    height: FRAME_SIZE * 1.25,
-    position: "relative",
+  oval: {
+    width: OVAL_W,
+    height: OVAL_H,
+    borderRadius: OVAL_W / 2,
+    borderWidth: 2.5,
+    borderColor: "rgba(255,255,255,0.88)",
+    overflow: "hidden",
   },
-  corner: {
+  eyeLine: {
     position: "absolute",
-    width: CORNER,
-    height: CORNER,
-    borderColor: Colors.white,
-  },
-  cornerTL: {
-    top: 0,
+    top: OVAL_H * EYE_TOP_PCT,
     left: 0,
-    borderTopWidth: CORNER_THICKNESS,
-    borderLeftWidth: CORNER_THICKNESS,
-    borderTopLeftRadius: 6,
-  },
-  cornerTR: {
-    top: 0,
     right: 0,
-    borderTopWidth: CORNER_THICKNESS,
-    borderRightWidth: CORNER_THICKNESS,
-    borderTopRightRadius: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
   },
-  cornerBL: {
-    bottom: 0,
-    left: 0,
-    borderBottomWidth: CORNER_THICKNESS,
-    borderLeftWidth: CORNER_THICKNESS,
-    borderBottomLeftRadius: 6,
+  eyeLineDash: {
+    flex: 1,
+    height: 1.5,
+    backgroundColor: "rgba(255,220,50,0.85)",
   },
-  cornerBR: {
-    bottom: 0,
-    right: 0,
-    borderBottomWidth: CORNER_THICKNESS,
-    borderRightWidth: CORNER_THICKNESS,
-    borderBottomRightRadius: 6,
+  eyeLineLabel: {
+    backgroundColor: "rgba(255,220,50,0.9)",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginHorizontal: 5,
   },
-  guideText: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 13,
-    color: "rgba(255,255,255,0.75)",
-    marginTop: 16,
+  eyeLineTxt: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: 0.5,
+  },
+  marker: {
+    position: "absolute",
+    alignSelf: "center",
+    width: 12,
+    height: 2,
+    backgroundColor: "rgba(255,255,255,0.55)",
+    borderRadius: 1,
+  },
+  markerTop: { top: 10 },
+  markerBottom: { bottom: 10 },
+  guideHints: {
+    marginTop: 18,
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 20,
+  },
+  guideTitle: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    color: Colors.white,
+    textAlign: "center",
+    letterSpacing: -0.2,
+  },
+  guideSubtitle: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11.5,
+    color: "rgba(255,255,255,0.62)",
     textAlign: "center",
   },
   bottomBar: {
