@@ -35,10 +35,11 @@ import { ProcessingAnimation } from "@/components/ProcessingAnimation";
 import { CheckRow, ValidationBadge } from "@/components/ui/ValidationBadge";
 import { Button } from "@/components/ui/Button";
 import { AdBanner } from "@/components/AdBanner";
+import PhotoEditorSheet from "@/components/PhotoEditorSheet";
 
 export default function PhotoDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getPhoto } = usePhotos();
+  const { getPhoto, updatePhoto } = usePhotos();
   const { t, lang } = useLang();
   const insets = useSafeAreaInsets();
   const [processingStep, setProcessingStep] = useState(0);
@@ -46,6 +47,7 @@ export default function PhotoDetailScreen() {
   const [showPreview, setShowPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
   const whiteBgRef = useRef<View>(null);
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
@@ -157,6 +159,16 @@ export default function PhotoDetailScreen() {
       setSaving(false);
     }
   };
+
+  const handleEditorApply = useCallback(
+    async (newUri: string) => {
+      setShowEditor(false);
+      if (!id || !photo) return;
+      updatePhoto(id as string, { processedUri: newUri });
+      setWhiteBgUri(null);
+    },
+    [id, photo, updatePhoto]
+  );
 
   const openDocumentPreview = () => {
     if (!shareUri) return;
@@ -361,6 +373,13 @@ export default function PhotoDetailScreen() {
                 icon={<Feather name="file-text" size={16} color={Colors.white} />}
                 style={styles.primaryBtn}
               />
+              <Button
+                title={t.editPhoto}
+                onPress={() => { Haptics.selectionAsync(); setShowEditor(true); }}
+                variant="ghost"
+                icon={<Feather name="sliders" size={16} color={Colors.cobalt} />}
+                style={styles.primaryBtn}
+              />
               <View style={styles.secondaryRow}>
                 <Button
                   title={t.saveToGallery}
@@ -520,6 +539,16 @@ export default function PhotoDetailScreen() {
           </Animated.View>
         </View>
       </Modal>
+
+      {/* ── Photo Editor Sheet ───────────────────────────────────────────── */}
+      {showEditor && shareUri && (
+        <PhotoEditorSheet
+          visible={showEditor}
+          imageUri={shareUri}
+          onClose={() => setShowEditor(false)}
+          onApply={handleEditorApply}
+        />
+      )}
     </View>
   );
 }
