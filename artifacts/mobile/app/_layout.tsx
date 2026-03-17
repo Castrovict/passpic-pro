@@ -15,6 +15,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PermissionsGate } from "@/components/PermissionsGate";
 import { PhotoProvider } from "@/context/PhotoContext";
+import { LangProvider } from "@/context/LangContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -73,13 +74,15 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardProvider>
-              <PhotoProvider>
-                {!permissionsGranted ? (
-                  <PermissionsGate onGranted={() => setPermissionsGranted(true)} />
-                ) : (
-                  <RootLayoutNav />
-                )}
-              </PhotoProvider>
+              <LangProvider>
+                <PhotoProvider>
+                  {!permissionsGranted ? (
+                    <PermissionsGate onGranted={() => setPermissionsGranted(true)} />
+                  ) : (
+                    <RootLayoutNav />
+                  )}
+                </PhotoProvider>
+              </LangProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>

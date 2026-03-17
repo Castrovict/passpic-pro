@@ -1,0 +1,180 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { createContext, useContext, useEffect, useState } from "react";
+
+export type Lang = "es" | "en";
+
+const T = {
+  es: {
+    appName: "PassPic PRO",
+    appSub: "Fotos de Pasaporte con IA",
+    langLabel: "Idioma",
+    countryFormat: "Formato de País",
+    allCountries: "Todos los Países",
+    selectedFormat: "Formato seleccionado",
+    takePhoto: "Tomar Foto",
+    cameraFront: "delantera",
+    cameraBack: "trasera",
+    camera: "Cámara",
+    uploadGallery: "Subir de Galería",
+    tips: "Consejos para una foto perfecta",
+    tipsList: [
+      "Coloca tu cara directamente hacia la cámara",
+      "Asegúrate de tener buena iluminación frontal",
+      "Mantén expresión neutra, boca cerrada",
+      "Usa ropa oscura para destacar contra fondo blanco",
+    ],
+    processing: "Procesando...",
+    passportPhoto: "Foto de Pasaporte",
+    qualityScore: "Puntuación de Calidad",
+    validationChecks: "Verificaciones",
+    photoSpecs: "Especificaciones",
+    background: "Fondo",
+    backgroundWhite: "Blanco (#FFFFFF)",
+    share: "Compartir",
+    download: "Descargar",
+    myPhotos: "Mis Fotos",
+    noPhotos: "Sin fotos aún",
+    noPhotosSub: "Toma tu primera foto de pasaporte",
+    frontCamera: "Cámara delantera",
+    backCamera: "Cámara trasera",
+    centerFace: "Centra tu cara dentro del marco",
+    permRequired: "Permisos necesarios",
+    permDesc: "PassPic PRO necesita los siguientes permisos para funcionar correctamente. Tu privacidad está protegida — nunca compartimos tus fotos.",
+    permCamera: "Cámara",
+    permCameraDesc: "Para tomar fotos directamente desde la app y generar tu foto de pasaporte.",
+    permPhotos: "Fotos y Galería",
+    permPhotosDesc: "Para seleccionar fotos existentes de tu galería y guardar tus fotos de pasaporte.",
+    grantPerms: "Otorgar permisos",
+    allGranted: "Todos los permisos otorgados",
+    privacyNote: "Puedes cambiar estos permisos en cualquier momento desde los Ajustes de tu dispositivo.",
+    required: "Requerido",
+    excellent: "Excelente",
+    good: "Bueno",
+    fair: "Regular",
+    needsImprovement: "Necesita mejora",
+    faceDetected: "Cara detectada",
+    faceDetectedOk: "Cara claramente visible",
+    faceDetectedFail: "No se detectó cara en la foto",
+    neutralExpr: "Expresión neutral",
+    neutralExprOk: "Expresión es neutral",
+    neutralExprFail: "Sonrisa detectada — mantén expresión neutral",
+    eyesOpen: "Ojos abiertos",
+    eyesOpenOk: "Ojos abiertos y visibles",
+    eyesOpenFail: "Ojos parecen cerrados o parcialmente cerrados",
+    goodLighting: "Buena iluminación",
+    goodLightingOk: "Iluminación uniforme y brillante",
+    goodLightingFail: "Iluminación irregular detectada",
+    plainBg: "Fondo blanco",
+    plainBgOk: "Fondo reemplazado correctamente",
+    plainBgFail: "Fondo puede no estar completamente reemplazado",
+    bgProcessing: "Procesando fondo blanco...",
+    bgDone: "Fondo blanco aplicado",
+  },
+  en: {
+    appName: "PassPic PRO",
+    appSub: "AI Passport Photos",
+    langLabel: "Language",
+    countryFormat: "Country Format",
+    allCountries: "All Countries",
+    selectedFormat: "Selected format",
+    takePhoto: "Take Photo",
+    cameraFront: "front",
+    cameraBack: "rear",
+    camera: "Camera",
+    uploadGallery: "Upload from Gallery",
+    tips: "Tips for a perfect photo",
+    tipsList: [
+      "Face the camera directly",
+      "Make sure you have good front lighting",
+      "Keep a neutral expression, mouth closed",
+      "Wear dark clothing to stand out against the white background",
+    ],
+    processing: "Processing...",
+    passportPhoto: "Passport Photo",
+    qualityScore: "Quality Score",
+    validationChecks: "Validation Checks",
+    photoSpecs: "Specifications",
+    background: "Background",
+    backgroundWhite: "White (#FFFFFF)",
+    share: "Share",
+    download: "Download",
+    myPhotos: "My Photos",
+    noPhotos: "No photos yet",
+    noPhotosSub: "Take your first passport photo",
+    frontCamera: "Front camera",
+    backCamera: "Rear camera",
+    centerFace: "Center your face in the frame",
+    permRequired: "Permissions required",
+    permDesc: "PassPic PRO needs the following permissions to work correctly. Your privacy is protected — we never share your photos.",
+    permCamera: "Camera",
+    permCameraDesc: "To take photos directly from the app and generate your passport photo.",
+    permPhotos: "Photos & Gallery",
+    permPhotosDesc: "To select existing photos from your gallery and save your passport photos.",
+    grantPerms: "Grant permissions",
+    allGranted: "All permissions granted",
+    privacyNote: "You can change these permissions at any time from your device Settings.",
+    required: "Required",
+    excellent: "Excellent",
+    good: "Good",
+    fair: "Fair",
+    needsImprovement: "Needs Improvement",
+    faceDetected: "Face detected",
+    faceDetectedOk: "Face clearly visible",
+    faceDetectedFail: "No face detected in photo",
+    neutralExpr: "Neutral expression",
+    neutralExprOk: "Expression is neutral",
+    neutralExprFail: "Smile detected — keep a neutral expression",
+    eyesOpen: "Eyes open",
+    eyesOpenOk: "Eyes are open and visible",
+    eyesOpenFail: "Eyes appear closed or partially closed",
+    goodLighting: "Good lighting",
+    goodLightingOk: "Lighting is even and bright",
+    goodLightingFail: "Uneven lighting detected",
+    plainBg: "White background",
+    plainBgOk: "Background replaced successfully",
+    plainBgFail: "Background may not be fully replaced",
+    bgProcessing: "Processing white background...",
+    bgDone: "White background applied",
+  },
+};
+
+export type Translations = typeof T.es;
+
+interface LangContextValue {
+  lang: Lang;
+  setLang: (l: Lang) => void;
+  t: Translations;
+}
+
+const LangContext = createContext<LangContextValue>({
+  lang: "es",
+  setLang: () => {},
+  t: T.es,
+});
+
+const LANG_KEY = "@passpic_lang";
+
+export function LangProvider({ children }: { children: React.ReactNode }) {
+  const [lang, setLangState] = useState<Lang>("es");
+
+  useEffect(() => {
+    AsyncStorage.getItem(LANG_KEY).then((v) => {
+      if (v === "en" || v === "es") setLangState(v);
+    });
+  }, []);
+
+  const setLang = (l: Lang) => {
+    setLangState(l);
+    AsyncStorage.setItem(LANG_KEY, l);
+  };
+
+  return (
+    <LangContext.Provider value={{ lang, setLang, t: T[lang] }}>
+      {children}
+    </LangContext.Provider>
+  );
+}
+
+export function useLang() {
+  return useContext(LangContext);
+}

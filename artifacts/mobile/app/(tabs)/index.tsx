@@ -27,9 +27,11 @@ import { simulateValidation } from "@/utils/photoProcessing";
 import { CountryCard } from "@/components/ui/CountryCard";
 import { Button } from "@/components/ui/Button";
 import { CameraModal } from "@/components/CameraModal";
+import { useLang } from "@/context/LangContext";
 
 export default function CameraScreen() {
   const insets = useSafeAreaInsets();
+  const { t, lang, setLang } = useLang();
   const { selectedCountry, setSelectedCountry, addPhoto, updatePhoto } = usePhotos();
   const [isProcessing, setIsProcessing] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<"front" | "back">("front");
@@ -122,11 +124,19 @@ export default function CameraScreen() {
       >
         <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.header}>
           <View>
-            <Text style={styles.greeting}>PassPic PRO</Text>
-            <Text style={styles.subtitle}>AI Passport Photos</Text>
+            <Text style={styles.greeting}>{t.appName}</Text>
+            <Text style={styles.subtitle}>{t.appSub}</Text>
           </View>
-          <View style={styles.proTag}>
-            <Text style={styles.proText}>PRO</Text>
+          <View style={styles.headerRight}>
+            <Pressable
+              onPress={() => { Haptics.selectionAsync(); setLang(lang === "es" ? "en" : "es"); }}
+              style={styles.langBtn}
+            >
+              <Text style={styles.langBtnText}>{lang === "es" ? "EN" : "ES"}</Text>
+            </Pressable>
+            <View style={styles.proTag}>
+              <Text style={styles.proText}>PRO</Text>
+            </View>
           </View>
         </Animated.View>
 
@@ -149,23 +159,28 @@ export default function CameraScreen() {
 
           <View style={styles.featureList}>
             {[
-              { icon: "zap", text: "AI Background Removal" },
-              { icon: "shield", text: "50+ Country Formats" },
-              { icon: "check-circle", text: "Quality Validation" },
-            ].map((f) => (
-              <View key={f.text} style={styles.featureItem}>
-                <View style={styles.featureIcon}>
-                  <Feather name={f.icon as any} size={14} color={Colors.cobalt} />
+              { icon: "zap", key: "feat1" },
+              { icon: "shield", key: "feat2" },
+              { icon: "check-circle", key: "feat3" },
+            ].map((f, i) => {
+              const labels = lang === "es"
+                ? ["Fondo Blanco con IA", "50+ Formatos de País", "Validación de Calidad"]
+                : ["AI White Background", "50+ Country Formats", "Quality Validation"];
+              return (
+                <View key={f.key} style={styles.featureItem}>
+                  <View style={styles.featureIcon}>
+                    <Feather name={f.icon as any} size={14} color={Colors.cobalt} />
+                  </View>
+                  <Text style={styles.featureText}>{labels[i]}</Text>
                 </View>
-                <Text style={styles.featureText}>{f.text}</Text>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(250).springify()} style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Country Format</Text>
+            <Text style={styles.sectionTitle}>{t.countryFormat}</Text>
             <Pressable
               onPress={() => {
                 Haptics.selectionAsync();
@@ -173,7 +188,7 @@ export default function CameraScreen() {
               }}
               style={styles.seeAllBtn}
             >
-              <Text style={styles.seeAllText}>All Countries</Text>
+              <Text style={styles.seeAllText}>{t.allCountries}</Text>
               <Feather name="chevron-right" size={14} color={Colors.cobalt} />
             </Pressable>
           </View>
@@ -208,7 +223,7 @@ export default function CameraScreen() {
         <Animated.View entering={FadeInUp.delay(400).springify()} style={styles.actions}>
           {/* Selector cámara delantera / trasera */}
           <View style={styles.cameraToggleRow}>
-            <Text style={styles.cameraToggleLabel}>Cámara:</Text>
+            <Text style={styles.cameraToggleLabel}>{t.camera}:</Text>
             <View style={styles.cameraToggleWrap}>
               <Pressable
                 onPress={() => { Haptics.selectionAsync(); setCameraFacing("front"); }}
@@ -228,7 +243,7 @@ export default function CameraScreen() {
                     cameraFacing === "front" && styles.cameraToggleTextActive,
                   ]}
                 >
-                  Delantera
+                  {lang === "es" ? "Delantera" : "Front"}
                 </Text>
               </Pressable>
               <Pressable
@@ -249,7 +264,7 @@ export default function CameraScreen() {
                     cameraFacing === "back" && styles.cameraToggleTextActive,
                   ]}
                 >
-                  Trasera
+                  {lang === "es" ? "Trasera" : "Rear"}
                 </Text>
               </Pressable>
             </View>
@@ -273,9 +288,11 @@ export default function CameraScreen() {
                 <Feather name={cameraFacing === "front" ? "user" : "camera"} size={28} color={Colors.white} />
               </View>
               <View>
-                <Text style={styles.cameraBtnTitle}>Tomar Foto</Text>
+                <Text style={styles.cameraBtnTitle}>{t.takePhoto}</Text>
                 <Text style={styles.cameraBtnSub}>
-                  Cámara {cameraFacing === "front" ? "delantera" : "trasera"}
+                  {lang === "es"
+                    ? `Cámara ${cameraFacing === "front" ? "delantera" : "trasera"}`
+                    : `${cameraFacing === "front" ? "Front" : "Rear"} camera`}
                 </Text>
               </View>
             </LinearGradient>
@@ -290,19 +307,14 @@ export default function CameraScreen() {
             ]}
           >
             <Feather name="image" size={22} color={Colors.cobalt} />
-            <Text style={styles.galleryBtnText}>Subir de Galería</Text>
+            <Text style={styles.galleryBtnText}>{t.uploadGallery}</Text>
           </Pressable>
         </Animated.View>
 
         <Animated.View entering={FadeIn.delay(500)} style={styles.tips}>
-          <Text style={styles.tipsTitle}>Consejos para la foto</Text>
+          <Text style={styles.tipsTitle}>{t.tips}</Text>
           <View style={styles.tipsList}>
-            {[
-              "Mira directo a la cámara, sin inclinar la cabeza",
-              "Asegura buena iluminación uniforme, sin sombras",
-              "Mantén expresión neutral, boca cerrada",
-              "Usa una pared clara o blanca de fondo",
-            ].map((tip, i) => (
+            {t.tipsList.map((tip, i) => (
               <View key={i} style={styles.tipItem}>
                 <View style={styles.tipNum}>
                   <Text style={styles.tipNumText}>{i + 1}</Text>
@@ -340,6 +352,25 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: 24,
     paddingTop: 8,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  langBtn: {
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+  },
+  langBtnText: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 12,
+    color: Colors.white,
+    letterSpacing: 1,
   },
   greeting: {
     fontFamily: "Inter_700Bold",
