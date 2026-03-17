@@ -211,7 +211,7 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
       const cropW = Math.round(w * factor);
       const cropH = Math.round(h * factor);
       const originX = Math.round((w - cropW) / 2);
-      const originY = Math.round((h - cropH) * 0.20);
+      const originY = Math.round((h - cropH) * 0.30);
       const result = await ImageManipulator.manipulateAsync(
         imageUri,
         [
