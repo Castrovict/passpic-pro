@@ -73,11 +73,9 @@ export function CameraModal({
 
   // ── Face detection state ────────────────────────────────────────────────
   const [faceResult, setFaceResult] = useState<FaceResult | null>(null);
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
   const analyzeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isReadyRef = useRef(false);
+  // Use refs for all flags that must be synchronously reliable
+  const analyzingRef = useRef(false);
   const isTakingRef = useRef(false);
 
   // ── Animations ──────────────────────────────────────────────────────────
@@ -124,18 +122,21 @@ export function CameraModal({
   }, [faceResult?.status]);
 
   // ── Face analysis via server ─────────────────────────────────────────────
+  // Uses a ref flag (not state) so checks are always synchronous
   const analyzeFrame = useCallback(async () => {
-    if (!cameraRef.current || isTakingRef.current || analyzing) return;
+    if (!cameraRef.current) return;
+    if (isTakingRef.current) return;   // real capture in progress
+    if (analyzingRef.current) return;  // analysis already running
     if (!API_DOMAIN) return;
 
+    analyzingRef.current = true;
     try {
-      setAnalyzing(true);
       const snap = await cameraRef.current.takePictureAsync({
-        quality: 0.25,
-        skipProcessing: true,
-        base64: true,
+        quality: 0.15,        // very low quality is enough for analysis
+        skipProcessing: true, // skip EXIF rotation etc.
+        base64: true,         // get base64 directly, no file written
       });
-      if (!snap?.base64) return;
+      if (!snap?.base64 || isTakingRef.current) return;
 
       const res = await fetch(`https://${API_DOMAIN}/api/analyze-face`, {
         method: "POST",
@@ -144,49 +145,20 @@ export function CameraModal({
         signal: AbortSignal.timeout(4000),
       });
 
-      if (!res.ok) return;
+      if (!res.ok || isTakingRef.current) return;
       const data = (await res.json()) as FaceResult;
-      setFaceResult(data);
-      ovalState.value = withTiming(data.status === "ready" ? 2 : 1, { duration: 300 });
 
-      const wasReady = isReadyRef.current;
-      isReadyRef.current = data.status === "ready";
-
-      // Start countdown on first "ready" detection
-      if (data.status === "ready" && !wasReady && !isTakingRef.current) {
-        startCountdown();
-      } else if (data.status !== "ready") {
-        clearCountdown();
+      // Don't update UI if a real capture started while we were analyzing
+      if (!isTakingRef.current) {
+        setFaceResult(data);
+        ovalState.value = withTiming(data.status === "ready" ? 2 : 1, { duration: 300 });
       }
     } catch {
-      // Silently ignore analysis errors (timeout, offline, etc.)
+      // Silently swallow timeouts / network errors — camera UX is unaffected
     } finally {
-      setAnalyzing(false);
+      analyzingRef.current = false;
     }
-  }, [analyzing]);
-
-  const startCountdown = useCallback(() => {
-    setCountdown(3);
-    let count = 3;
-    countdownTimerRef.current = setInterval(() => {
-      count -= 1;
-      setCountdown(count);
-      if (count <= 0) {
-        clearCountdown();
-        if (!isTakingRef.current && isReadyRef.current) {
-          handleAutoCapture();
-        }
-      }
-    }, 1000);
-  }, []);
-
-  const clearCountdown = useCallback(() => {
-    if (countdownTimerRef.current) {
-      clearInterval(countdownTimerRef.current);
-      countdownTimerRef.current = null;
-    }
-    setCountdown(null);
-  }, []);
+  }, []); // no deps — uses only refs + ovalState (stable)
 
   // Start/stop periodic analysis when modal opens/closes
   useEffect(() => {
@@ -199,12 +171,13 @@ export function CameraModal({
 
     return () => {
       clearTimeout(initial);
-      if (analyzeTimerRef.current) clearInterval(analyzeTimerRef.current);
-      clearCountdown();
-      isReadyRef.current = false;
+      if (analyzeTimerRef.current) {
+        clearInterval(analyzeTimerRef.current);
+        analyzeTimerRef.current = null;
+      }
+      analyzingRef.current = false;
       isTakingRef.current = false;
       setFaceResult(null);
-      setCountdown(null);
       ovalState.value = 0;
     };
   }, [visible, isWeb]);
@@ -215,7 +188,6 @@ export function CameraModal({
     setFacing((prev) => (prev === "front" ? "back" : "front"));
     setFaceResult(null);
     ovalState.value = withTiming(0, { duration: 200 });
-    clearCountdown();
   };
 
   const toggleFlash = () => {
@@ -223,13 +195,18 @@ export function CameraModal({
     setFlash((prev) => (prev === "off" ? "on" : "off"));
   };
 
-  const capturePhoto = async () => {
+  const takePhoto = async () => {
     if (!cameraRef.current || isTakingRef.current) return;
-    isTakingRef.current = true;
-    setIsTaking(true);
-    clearCountdown();
-    if (analyzeTimerRef.current) clearInterval(analyzeTimerRef.current);
 
+    // Block analysis immediately (synchronous ref)
+    isTakingRef.current = true;
+    analyzingRef.current = false; // allow analyzeFrame to stop gracefully
+    if (analyzeTimerRef.current) {
+      clearInterval(analyzeTimerRef.current);
+      analyzeTimerRef.current = null;
+    }
+
+    setIsTaking(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     shutterScale.value = withSequence(
       withTiming(0.88, { duration: 80 }),
@@ -241,6 +218,8 @@ export function CameraModal({
     );
 
     try {
+      // Small delay to let any in-flight analysis snapshot finish
+      await new Promise((r) => setTimeout(r, 120));
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.95,
         skipProcessing: false,
@@ -253,13 +232,6 @@ export function CameraModal({
       setIsTaking(false);
     }
   };
-
-  const handleAutoCapture = async () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await capturePhoto();
-  };
-
-  const takePhoto = () => capturePhoto();
 
   // ── Early returns ────────────────────────────────────────────────────────
   if (!visible) return null;
@@ -384,9 +356,6 @@ export function CameraModal({
             >
               <Feather name={statusInfo.icon as any} size={14} color="#fff" />
               <Text style={styles.statusText}>{faceResult.messageEs}</Text>
-              {analyzing && (
-                <ActivityIndicator size="small" color="rgba(255,255,255,0.7)" style={{ marginLeft: 4 }} />
-              )}
             </Animated.View>
           ) : (
             <View style={styles.guideHints}>
@@ -397,19 +366,6 @@ export function CameraModal({
             </View>
           )}
         </View>
-
-        {/* Countdown overlay */}
-        {countdown !== null && (
-          <Animated.View
-            entering={FadeIn.duration(150)}
-            exiting={FadeOut.duration(150)}
-            style={styles.countdownOverlay}
-            pointerEvents="none"
-          >
-            <Text style={styles.countdownNumber}>{countdown}</Text>
-            <Text style={styles.countdownLabel}>¡Mantén la pose!</Text>
-          </Animated.View>
-        )}
 
         {/* Biometric checklist (top-right corner) */}
         <BiometricChecklist status={faceResult?.status ?? null} />
@@ -547,16 +503,6 @@ const styles = StyleSheet.create({
     borderRadius: 22, maxWidth: 280,
   },
   statusText: { fontFamily: "Inter_600SemiBold", fontSize: 13, color: "#fff", flexShrink: 1 },
-  countdownOverlay: {
-    ...StyleSheet.absoluteFillObject, zIndex: 20,
-    alignItems: "center", justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-  countdownNumber: {
-    fontFamily: "Inter_700Bold", fontSize: 120, color: "rgba(34,197,94,0.95)",
-    lineHeight: 130,
-  },
-  countdownLabel: { fontFamily: "Inter_600SemiBold", fontSize: 18, color: "#fff", marginTop: 8 },
   checklist: {
     position: "absolute", top: 100, right: 16, zIndex: 6,
     backgroundColor: "rgba(0,0,0,0.55)", borderRadius: 12,
