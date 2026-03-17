@@ -2,10 +2,12 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
+import * as MediaLibrary from "expo-media-library";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -20,6 +22,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
 } from "react-native-reanimated";
 import ViewShot from "react-native-view-shot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -40,6 +43,9 @@ export default function PhotoDetailScreen() {
   const insets = useSafeAreaInsets();
   const [processingStep, setProcessingStep] = useState(0);
   const [whiteBgUri, setWhiteBgUri] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedOk, setSavedOk] = useState(false);
   const viewShotRef = useRef<ViewShot>(null);
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
@@ -86,9 +92,54 @@ export default function PhotoDetailScreen() {
         ? `Mi foto de pasaporte para ${photo?.countryName} — Generada con PassPic PRO`
         : `My passport photo for ${photo?.countryName} — Generated with PassPic PRO`;
       await Share.share({ message: msg, url: shareUri });
-    } catch (e) {
+    } catch {
       console.log("Share cancelled");
     }
+  };
+
+  const handleSaveToGallery = async () => {
+    if (!shareUri || isWeb) {
+      if (isWeb) {
+        Alert.alert(
+          lang === "es" ? "Solo móvil" : "Mobile only",
+          lang === "es"
+            ? "La descarga a galería solo está disponible en el dispositivo móvil."
+            : "Saving to gallery is only available on mobile devices."
+        );
+      }
+      return;
+    }
+    setSaving(true);
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          lang === "es" ? "Permiso denegado" : "Permission denied",
+          lang === "es"
+            ? "Necesitas permitir acceso a la galería en los ajustes de tu dispositivo."
+            : "Please allow gallery access in your device settings.",
+        );
+        setSaving(false);
+        return;
+      }
+      await MediaLibrary.saveToLibraryAsync(shareUri);
+      setSavedOk(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setTimeout(() => setSavedOk(false), 3000);
+    } catch {
+      Alert.alert(
+        lang === "es" ? "Error" : "Error",
+        t.saveError
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openDocumentPreview = () => {
+    if (!shareUri) return;
+    Haptics.selectionAsync();
+    setShowPreview(true);
   };
 
   if (!photo) {
@@ -127,11 +178,11 @@ export default function PhotoDetailScreen() {
         </Text>
         {isDone && (
           <Pressable
-            onPress={handleShare}
+            onPress={openDocumentPreview}
             style={({ pressed }) => [styles.shareBtn, { opacity: pressed ? 0.6 : 1 }]}
             hitSlop={12}
           >
-            <Feather name="share" size={20} color={Colors.white} />
+            <Feather name="eye" size={20} color={Colors.white} />
           </Pressable>
         )}
         {!isDone && <View style={{ width: 36 }} />}
@@ -200,6 +251,16 @@ export default function PhotoDetailScreen() {
                     {formatDimensions(country.widthMm, country.heightMm)}
                   </Text>
                 </View>
+              )}
+
+              {isDone && shareUri && (
+                <Pressable
+                  onPress={openDocumentPreview}
+                  style={({ pressed }) => [styles.previewTapHint, { opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <Feather name="file-text" size={14} color={Colors.cobalt} />
+                  <Text style={styles.previewTapText}>{t.tapToPreview}</Text>
+                </Pressable>
               )}
             </Animated.View>
 
@@ -285,19 +346,42 @@ export default function PhotoDetailScreen() {
 
             <Animated.View entering={FadeInDown.delay(450).springify()} style={styles.actions}>
               <Button
-                title={t.share}
-                onPress={handleShare}
-                icon={<Feather name="share-2" size={16} color={Colors.white} />}
+                title={t.docPreviewTitle}
+                onPress={openDocumentPreview}
+                icon={<Feather name="file-text" size={16} color={Colors.white} />}
                 style={styles.primaryBtn}
               />
+              <View style={styles.secondaryRow}>
+                <Button
+                  title={t.saveToGallery}
+                  onPress={handleSaveToGallery}
+                  variant="ghost"
+                  icon={<Feather name="download" size={16} color={Colors.cobalt} />}
+                  style={styles.halfBtn}
+                />
+                <Button
+                  title={t.share}
+                  onPress={handleShare}
+                  variant="ghost"
+                  icon={<Feather name="share-2" size={16} color={Colors.cobalt} />}
+                  style={styles.halfBtn}
+                />
+              </View>
               <Button
                 title={lang === "es" ? "Nueva Foto" : "New Photo"}
                 onPress={() => router.back()}
                 variant="ghost"
-                icon={<Feather name="camera" size={16} color={Colors.cobalt} />}
-                style={styles.secondaryBtn}
+                icon={<Feather name="camera" size={16} color={Colors.muted} />}
+                style={[styles.primaryBtn, { opacity: 0.7 }]}
               />
             </Animated.View>
+
+            {savedOk && (
+              <Animated.View entering={FadeIn} style={styles.savedBanner}>
+                <Feather name="check-circle" size={16} color="#fff" />
+                <Text style={styles.savedBannerText}>{t.savedToGallery}</Text>
+              </Animated.View>
+            )}
           </>
         )}
 
@@ -305,6 +389,131 @@ export default function PhotoDetailScreen() {
       </ScrollView>
 
       <AdBanner />
+
+      {/* ── Document Preview Modal ─────────────────────────────────────── */}
+      <Modal
+        visible={showPreview}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPreview(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setShowPreview(false)} />
+          <Animated.View entering={FadeInDown.springify()} style={styles.modalSheet}>
+
+            {/* Handle */}
+            <View style={styles.sheetHandle} />
+
+            {/* Header */}
+            <View style={styles.sheetHeader}>
+              <View style={styles.sheetTitleRow}>
+                <Feather name="file-text" size={18} color={Colors.navy} />
+                <Text style={styles.sheetTitle}>{t.docPreviewTitle}</Text>
+              </View>
+              <Pressable onPress={() => setShowPreview(false)} hitSlop={12}>
+                <View style={styles.closeBtn}>
+                  <Feather name="x" size={18} color={Colors.navy} />
+                </View>
+              </Pressable>
+            </View>
+
+            {/* Document preview */}
+            <View style={styles.docContainer}>
+              <View style={styles.docPaper}>
+                {/* Document header strip */}
+                <View style={styles.docHeader}>
+                  <View style={styles.docHeaderLeft}>
+                    {country && (
+                      <Text style={styles.docFlag}>{country.flag}</Text>
+                    )}
+                    <View>
+                      <Text style={styles.docCountryName}>{country?.name ?? "—"}</Text>
+                      <Text style={styles.docFormatLabel}>{t.docFormat}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.docDimsBadge}>
+                    <Text style={styles.docDimsText}>
+                      {country ? `${country.widthMm}×${country.heightMm}mm` : "—"}
+                    </Text>
+                    <Text style={styles.docDpiText}>{country?.dpi ?? 300} DPI</Text>
+                  </View>
+                </View>
+
+                <View style={styles.docDivider} />
+
+                {/* Photo */}
+                <View style={styles.docPhotoArea}>
+                  <View style={[
+                    styles.docPhotoFrame,
+                    { aspectRatio: country ? country.widthMm / country.heightMm : 0.75 }
+                  ]}>
+                    {shareUri ? (
+                      <Image
+                        source={{ uri: shareUri }}
+                        style={styles.docPhoto}
+                        contentFit="cover"
+                      />
+                    ) : (
+                      <View style={styles.docPhotoPlaceholder}>
+                        <Feather name="image" size={40} color={Colors.muted} />
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.docPhotoLabel}>
+                    {lang === "es" ? "Fondo blanco · Listo para imprimir" : "White background · Print-ready"}
+                  </Text>
+                </View>
+
+                <View style={styles.docDivider} />
+
+                {/* Specs row */}
+                <View style={styles.docSpecsRow}>
+                  {[
+                    { icon: "check-circle", label: lang === "es" ? "Validado" : "Validated", color: Colors.success },
+                    { icon: "image", label: `${country?.widthPx ?? "—"}×${country?.heightPx ?? "—"}px`, color: Colors.cobalt },
+                    { icon: "layers", label: "JPG · 97%", color: Colors.muted },
+                  ].map(({ icon, label, color }) => (
+                    <View key={label} style={styles.docSpecItem}>
+                      <Feather name={icon as any} size={14} color={color} />
+                      <Text style={[styles.docSpecText, { color }]}>{label}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            {/* Action buttons */}
+            <View style={styles.sheetActions}>
+              <Pressable
+                onPress={async () => {
+                  await handleSaveToGallery();
+                }}
+                style={({ pressed }) => [styles.sheetBtn, styles.sheetBtnPrimary, { opacity: pressed || saving ? 0.8 : 1 }]}
+                disabled={saving}
+              >
+                <Feather name={savedOk ? "check" : "download"} size={18} color="#fff" />
+                <Text style={styles.sheetBtnPrimaryText}>
+                  {saving
+                    ? (lang === "es" ? "Guardando..." : "Saving...")
+                    : savedOk
+                    ? (lang === "es" ? "¡Guardado!" : "Saved!")
+                    : t.saveToGallery}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => { setShowPreview(false); setTimeout(handleShare, 300); }}
+                style={({ pressed }) => [styles.sheetBtn, styles.sheetBtnSecondary, { opacity: pressed ? 0.8 : 1 }]}
+              >
+                <Feather name="share-2" size={18} color={Colors.cobalt} />
+                <Text style={styles.sheetBtnSecondaryText}>{t.share}</Text>
+              </Pressable>
+            </View>
+
+            <View style={{ height: insets.bottom + 8 }} />
+          </Animated.View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -502,6 +711,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.muted,
   },
+  previewTapHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+    backgroundColor: Colors.cobalt + "12",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.cobalt + "25",
+  },
+  previewTapText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 12,
+    color: Colors.cobalt,
+  },
   card: {
     backgroundColor: Colors.white,
     borderRadius: 18,
@@ -585,15 +811,33 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   actions: {
-    gap: 12,
+    gap: 10,
     marginTop: 4,
     marginBottom: 12,
   },
   primaryBtn: {
     width: "100%",
   },
-  secondaryBtn: {
-    width: "100%",
+  secondaryRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  halfBtn: {
+    flex: 1,
+  },
+  savedBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: Colors.success,
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 10,
+  },
+  savedBannerText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    color: "#fff",
   },
   notFound: {
     flex: 1,
@@ -606,5 +850,209 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     fontSize: 16,
     color: Colors.muted,
+  },
+
+  // ── Modal ───────────────────────────────────────────────────────────────────
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  modalSheet: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 20,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.silver,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  sheetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 18,
+  },
+  sheetTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  sheetTitle: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 18,
+    color: Colors.navy,
+    letterSpacing: -0.4,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.offWhite,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  docContainer: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  docPaper: {
+    width: "100%",
+    backgroundColor: "#FAFAFA",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.silver,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  docHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 14,
+    backgroundColor: Colors.navy,
+  },
+  docHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  docFlag: {
+    fontSize: 26,
+  },
+  docCountryName: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 14,
+    color: Colors.white,
+    letterSpacing: -0.2,
+  },
+  docFormatLabel: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    color: "rgba(255,255,255,0.55)",
+    marginTop: 1,
+  },
+  docDimsBadge: {
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: "center",
+  },
+  docDimsText: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 13,
+    color: Colors.white,
+    letterSpacing: -0.2,
+  },
+  docDpiText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 10,
+    color: "rgba(255,255,255,0.6)",
+    marginTop: 1,
+  },
+  docDivider: {
+    height: 1,
+    backgroundColor: Colors.silver,
+  },
+  docPhotoArea: {
+    alignItems: "center",
+    padding: 20,
+    backgroundColor: Colors.white,
+  },
+  docPhotoFrame: {
+    width: 160,
+    backgroundColor: Colors.white,
+    borderRadius: 6,
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: Colors.silver,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  docPhoto: {
+    width: "100%",
+    height: "100%",
+  },
+  docPhotoPlaceholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 200,
+  },
+  docPhotoLabel: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 11,
+    color: Colors.muted,
+    marginTop: 10,
+    textAlign: "center",
+  },
+  docSpecsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    padding: 12,
+    backgroundColor: Colors.offWhite,
+  },
+  docSpecItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  docSpecText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 11,
+  },
+  sheetActions: {
+    gap: 10,
+    marginBottom: 8,
+  },
+  sheetBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 15,
+    borderRadius: 16,
+  },
+  sheetBtnPrimary: {
+    backgroundColor: Colors.cobalt,
+  },
+  sheetBtnPrimaryText: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 16,
+    color: Colors.white,
+    letterSpacing: -0.3,
+  },
+  sheetBtnSecondary: {
+    backgroundColor: Colors.offWhite,
+    borderWidth: 1.5,
+    borderColor: Colors.silver,
+  },
+  sheetBtnSecondaryText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 16,
+    color: Colors.cobalt,
+    letterSpacing: -0.3,
   },
 });

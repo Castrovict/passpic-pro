@@ -33,6 +33,14 @@
       "expo-font",
       "expo-web-browser",
       [
+        "expo-media-library",
+        {
+          "photosPermission": "PassPic PRO necesita acceso a tu galería para guardar tus fotos de pasaporte.",
+          "savePhotosPermission": "PassPic PRO necesita permiso para guardar fotos de pasaporte en tu galería.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "PassPic needs access to your photos to process passport photos.",

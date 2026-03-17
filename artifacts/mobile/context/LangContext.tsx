@@ -69,6 +69,13 @@ const T = {
     plainBgFail: "Fondo puede no estar completamente reemplazado",
     bgProcessing: "Procesando fondo blanco...",
     bgDone: "Fondo blanco aplicado",
+    saveToGallery: "Guardar en Galería",
+    savedToGallery: "¡Foto guardada en tu galería!",
+    saveError: "No se pudo guardar la foto",
+    docPreviewTitle: "Vista del Documento",
+    docFormat: "Documento de pasaporte",
+    saveAndShare: "Guardar y Compartir",
+    tapToPreview: "Toca para ver el documento",
   },
   en: {
     appName: "PassPic PRO",
@@ -135,6 +142,13 @@ const T = {
     plainBgFail: "Background may not be fully replaced",
     bgProcessing: "Processing white background...",
     bgDone: "White background applied",
+    saveToGallery: "Save to Gallery",
+    savedToGallery: "Photo saved to your gallery!",
+    saveError: "Could not save photo",
+    docPreviewTitle: "Document Preview",
+    docFormat: "Passport document",
+    saveAndShare: "Save & Share",
+    tapToPreview: "Tap to preview document",
   },
 };
 
