@@ -1,0 +1,14 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "EQokTykWyCIFKVCVihZqn"
+uri = "file://artifacts/mobile/assets/images/icon.png"
+type = "image"
+title = "PassPic PRO — Ícono de App"
+
+[[outputs]]
+id = "jF9PMp1hUhLriaQeZFsap"
+uri = "file://artifacts/mobile/assets/images/splash-brand.png"
+type = "image"
+title = "PassPic PRO — Portada / Marca"
