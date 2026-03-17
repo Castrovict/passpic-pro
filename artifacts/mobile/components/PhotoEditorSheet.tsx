@@ -10,8 +10,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, { runOnJS, useSharedValue, withTiming } from "react-native-reanimated";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
 import Slider from "@react-native-community/slider";
 import * as FileSystem from "expo-file-system/legacy";
@@ -81,10 +79,8 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
   const [contrast, setContrast] = useState(0);
   const [saturation, setSaturation] = useState(0);
   const [zoomPct, setZoomPct] = useState(0);
-  const [pinchActive, setPinchActive] = useState(false);
-  const [pinchHintPct, setPinchHintPct] = useState(0);
+  const [sliderZoom, setSliderZoom] = useState(0);
   const [currentUri, setCurrentUri] = useState(imageUri);
-  const pinchScale = useSharedValue(1);
 
   useEffect(() => {
     if (visible) {
@@ -93,7 +89,7 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
       setContrast(0);
       setSaturation(0);
       setZoomPct(0);
-      setPinchActive(false);
+      setSliderZoom(0);
       setReady(false);
       setHtml(null);
       loadImage(imageUri);
@@ -184,6 +180,7 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
     setBrightness(0); setContrast(0); setSaturation(0);
     if (zoomPct !== 0) {
       setZoomPct(0);
+      setSliderZoom(0);
       setCurrentUri(imageUri);
       setReady(false); setHtml(null);
       loadImage(imageUri);
@@ -195,6 +192,7 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
     const clamped = Math.max(0, Math.min(Math.round(pct), 60));
     if (clamped === zoomPct) return;
     setZoomPct(clamped);
+    setSliderZoom(clamped);
     Haptics.selectionAsync();
     if (clamped === 0) {
       setCurrentUri(imageUri);
@@ -228,28 +226,6 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
     } catch (e) { console.warn("[Editor] zoom:", e); }
   };
 
-  const pinchGesture = Gesture.Pinch()
-    .onStart(() => {
-      runOnJS(setPinchActive)(true);
-    })
-    .onUpdate((e) => {
-      pinchScale.value = e.scale;
-      const clampedScale = Math.max(1, Math.min(e.scale, 2.5));
-      const pct = Math.round((1 - 1 / clampedScale) * 100);
-      runOnJS(setPinchHintPct)(Math.min(pct, 60));
-    })
-    .onEnd((e) => {
-      pinchScale.value = withTiming(1, { duration: 200 });
-      runOnJS(setPinchActive)(false);
-      const clampedScale = Math.max(1, Math.min(e.scale, 2.5));
-      const pct = Math.round((1 - 1 / clampedScale) * 100);
-      runOnJS(handleCropZoom)(Math.min(pct, 60));
-    })
-    .onFinalize(() => {
-      pinchScale.value = withTiming(1, { duration: 200 });
-      runOnJS(setPinchActive)(false);
-    });
-
   return (
     <Modal
       visible={visible}
@@ -276,55 +252,39 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
           </Pressable>
         </View>
 
-        {/* Preview — wrapped in GestureDetector for pinch-to-zoom */}
-        <GestureDetector gesture={pinchGesture}>
-          <Animated.View style={[s.preview, { height: PREVIEW_H }]}>
-            {loading && (
-              <View style={s.loadingBox}>
-                <ActivityIndicator size="large" color={Colors.primary} />
-                <Text style={s.loadingTxt}>Cargando imagen...</Text>
-              </View>
-            )}
-            {!loading && html && (
-              <WebView
-                ref={webviewRef}
-                source={{ html }}
-                style={s.webview}
-                onMessage={handleMessage}
-                scrollEnabled={false}
-                bounces={false}
-                javaScriptEnabled
-                originWhitelist={["*"]}
-                allowFileAccess
-                allowUniversalAccessFromFileURLs
-              />
-            )}
-            {!loading && !html && (
-              <View style={s.loadingBox}>
-                <Feather name="image" size={40} color="#2a2a40" />
-              </View>
-            )}
-            {!ready && html && !loading && (
-              <View style={s.loadingOverlay}>
-                <ActivityIndicator size="small" color="#fff" />
-              </View>
-            )}
-            {/* Pinch hint shown when not zoomed */}
-            {ready && !pinchActive && zoomPct === 0 && (
-              <View style={s.pinchHintBadge} pointerEvents="none">
-                <Feather name="zoom-in" size={11} color="rgba(255,255,255,0.6)" />
-                <Text style={s.pinchHintText}>Pellizca para acercar</Text>
-              </View>
-            )}
-            {/* Live zoom indicator while pinching */}
-            {pinchActive && (
-              <View style={s.zoomIndicator} pointerEvents="none">
-                <Feather name="zoom-in" size={22} color="#4ECDC4" />
-                <Text style={s.zoomIndicatorText}>{pinchHintPct}%</Text>
-              </View>
-            )}
-          </Animated.View>
-        </GestureDetector>
+        {/* Preview */}
+        <View style={[s.preview, { height: PREVIEW_H }]}>
+          {loading && (
+            <View style={s.loadingBox}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+              <Text style={s.loadingTxt}>Cargando imagen...</Text>
+            </View>
+          )}
+          {!loading && html && (
+            <WebView
+              ref={webviewRef}
+              source={{ html }}
+              style={s.webview}
+              onMessage={handleMessage}
+              scrollEnabled={false}
+              bounces={false}
+              javaScriptEnabled
+              originWhitelist={["*"]}
+              allowFileAccess
+              allowUniversalAccessFromFileURLs
+            />
+          )}
+          {!loading && !html && (
+            <View style={s.loadingBox}>
+              <Feather name="image" size={40} color="#2a2a40" />
+            </View>
+          )}
+          {!ready && html && !loading && (
+            <View style={s.loadingOverlay}>
+              <ActivityIndicator size="small" color="#fff" />
+            </View>
+          )}
+        </View>
 
         {/* Controls */}
         <ScrollView
@@ -370,11 +330,25 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
               );
             })}
           </View>
-          {zoomPct > 0 && (
-            <Text style={s.zoomCurrentTxt}>
-              Zoom actual: {zoomPct}% · Toca un preset o pellizca para ajustar
+          {/* Continuous zoom slider */}
+          <View style={s.zoomSliderRow}>
+            <Feather name="zoom-in" size={13} color={sliderZoom > 0 ? "#4ECDC4" : Colors.textMuted} />
+            <Slider
+              style={s.zoomSlider}
+              minimumValue={0}
+              maximumValue={60}
+              step={1}
+              value={sliderZoom}
+              onValueChange={(v) => setSliderZoom(Math.round(v))}
+              onSlidingComplete={(v) => handleCropZoom(Math.round(v))}
+              minimumTrackTintColor="#4ECDC4"
+              maximumTrackTintColor="#2a2a40"
+              thumbTintColor="#4ECDC4"
+            />
+            <Text style={[s.zoomSliderVal, sliderZoom > 0 && { color: "#4ECDC4" }]}>
+              {sliderZoom}%
             </Text>
-          )}
+          </View>
 
           {/* Color adjustments */}
           <View style={s.sectionHeaderRow}>
@@ -562,49 +536,24 @@ const s = StyleSheet.create({
   zoomBtnLabelActive: {
     color: "#4ECDC4",
   },
-  zoomCurrentTxt: {
-    fontSize: 11,
-    color: "#4ECDC4",
-    textAlign: "center",
-    marginTop: -8,
-    marginBottom: 12,
-    fontWeight: "600",
-  },
-  pinchHintBadge: {
-    position: "absolute",
-    bottom: 8,
-    alignSelf: "center",
+  zoomSliderRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 12,
+    paddingHorizontal: 2,
   },
-  pinchHintText: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.6)",
-    fontWeight: "500",
+  zoomSlider: {
+    flex: 1,
+    height: 36,
   },
-  zoomIndicator: {
-    position: "absolute",
-    alignSelf: "center",
-    top: "35%",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(0,0,0,0.65)",
-    paddingHorizontal: 22,
-    paddingVertical: 14,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: "#4ECDC4",
-  },
-  zoomIndicatorText: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#4ECDC4",
-    letterSpacing: -0.5,
+  zoomSliderVal: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontWeight: "700",
+    width: 34,
+    textAlign: "right",
   },
   sliderRow: {
     marginBottom: 14,
