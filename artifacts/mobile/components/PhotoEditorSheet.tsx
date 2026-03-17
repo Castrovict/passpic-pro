@@ -185,28 +185,6 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
     Haptics.selectionAsync();
   };
 
-  const applyManipulation = async (
-    actions: ImageManipulator.Action[],
-    resetZoom = false
-  ) => {
-    try {
-      setReady(false); setHtml(null);
-      Haptics.selectionAsync();
-      const result = await ImageManipulator.manipulateAsync(
-        currentUri, actions,
-        { compress: 0.92, format: ImageManipulator.SaveFormat.JPEG }
-      );
-      const next = result.uri;
-      setCurrentUri(next);
-      if (resetZoom) setZoomLevel(0);
-      await loadImage(next);
-    } catch (e) { console.warn("[Editor] manipulate:", e); }
-  };
-
-  const handleRotateLeft = () => applyManipulation([{ rotate: -90 }]);
-  const handleRotateRight = () => applyManipulation([{ rotate: 90 }]);
-  const handleFlip = () => applyManipulation([{ flip: ImageManipulator.FlipType.Horizontal }]);
-
   const ZOOM_PRESETS = {
     original: 0,
     leve: 0.15,
@@ -319,15 +297,6 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
           keyboardShouldPersistTaps="handled"
         >
 
-          {/* Transform row */}
-          <Text style={s.sectionLabel}>Transformar</Text>
-          <View style={s.transformRow}>
-            <TransBtn icon="rotate-ccw" label={t.rotateLeft} onPress={handleRotateLeft} />
-            <TransBtn icon="rotate-cw" label={t.rotateRight} onPress={handleRotateRight} />
-            <TransBtn icon="refresh-cw" label={t.flipH} onPress={handleFlip} />
-            <TransBtn icon="refresh-ccw" label={t.resetEdits} onPress={handleReset} accent />
-          </View>
-
           {/* Zoom / Face crop */}
           <View style={s.sectionHeaderRow}>
             <Text style={s.sectionLabel}>Acercar Rostro</Text>
@@ -364,7 +333,13 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
           </View>
 
           {/* Color adjustments */}
-          <Text style={s.sectionLabel}>Color</Text>
+          <View style={s.sectionHeaderRow}>
+            <Text style={[s.sectionLabel, { marginBottom: 0, marginTop: 0, flex: 1 }]}>Color</Text>
+            <Pressable onPress={handleReset} hitSlop={8} style={s.resetInline}>
+              <Feather name="refresh-ccw" size={12} color={Colors.textMuted} />
+              <Text style={s.resetInlineText}>{t.resetEdits}</Text>
+            </Pressable>
+          </View>
           <AdjSlider
             icon="sun" label={t.brightness} value={brightness}
             onChange={setBrightness} color="#FFD93D"
@@ -382,25 +357,6 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
         </ScrollView>
       </View>
     </Modal>
-  );
-}
-
-function TransBtn({
-  icon, label, onPress, accent,
-}: {
-  icon: keyof typeof Feather.glyphMap;
-  label: string;
-  onPress: () => void;
-  accent?: boolean;
-}) {
-  return (
-    <Pressable
-      style={({ pressed }) => [s.transBtn, accent && s.transBtnAccent, { opacity: pressed ? 0.7 : 1 }]}
-      onPress={onPress}
-    >
-      <Feather name={icon} size={20} color={accent ? Colors.primary : Colors.text} />
-      <Text style={[s.transBtnLabel, accent && { color: Colors.primary }]}>{label}</Text>
-    </Pressable>
   );
 }
 
@@ -509,31 +465,21 @@ const s = StyleSheet.create({
     marginBottom: 10,
     marginTop: 4,
   },
-  transformRow: {
+  resetInline: {
     flexDirection: "row",
-    gap: 8,
-    marginBottom: 18,
-  },
-  transBtn: {
-    flex: 1,
     alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
+    gap: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
     backgroundColor: "#1a1a2e",
-    borderRadius: 12,
-    paddingVertical: 12,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: "#2a2a40",
   },
-  transBtnAccent: {
-    borderColor: Colors.primary + "44",
-    backgroundColor: Colors.primary + "11",
-  },
-  transBtnLabel: {
-    fontSize: 10,
+  resetInlineText: {
+    fontSize: 11,
     color: Colors.textMuted,
     fontWeight: "600",
-    textAlign: "center",
   },
   sectionHeaderRow: {
     flexDirection: "row",
