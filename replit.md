@@ -7,8 +7,14 @@
 - **90+ países** organizados por región (Latinoamérica, Europa, Asia, Oriente Medio, África, Oceanía)
 - **Idioma ES/EN** — toggle persistido en AsyncStorage via `LangContext`
 - **Cámara in-app** via `expo-camera` + `CameraModal` — toggle frontal/trasera
+  - **Detección facial en tiempo real**: cada 2s toma un frame de baja calidad y lo envía al servidor
+  - Servidor analiza con detección de tono de piel (YCbCr) + distribución espacial
+  - Feedback visual: óvalo cambia de color (blanco→naranja→verde), badge de estado, checklist biométrico
+  - Auto-disparo: cuenta regresiva 3-2-1 cuando posición es perfecta
+  - Endpoint: `POST /api/analyze-face` → `{ status, message, messageEs }`
 - **Galería** via `expo-image-picker` — permisos pedidos contextualmente
-- **Fondo blanco** — compositing con `react-native-view-shot`
+- **Fondo blanco gratuito** — motor ONNX local `@imgly/background-removal-node` + `sharp`, sin API key ni costo
+  - Endpoint `POST /api/remove-bg` con `sharp` para compositar PNG transparente sobre blanco → JPEG
 - **Validación de calidad simulada** con puntuación y checks
 - **AdMob** — `react-native-google-mobile-ads` configurado con IDs de prueba de Google.
   - Archivos: `AdBanner.native.tsx` (nativo), `AdBanner.web.tsx` (vacío, evita error de bundle)

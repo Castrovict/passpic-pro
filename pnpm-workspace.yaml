@@ -67,6 +67,9 @@ onlyBuiltDependencies:
   - unrs-resolver
   - onnxruntime-node
   - sharp
+  - '@tensorflow/tfjs-node'
+  - core-js
+  - canvas
 
 overrides:
   # replit uses linux-x64 only, we can exclude all other platforms

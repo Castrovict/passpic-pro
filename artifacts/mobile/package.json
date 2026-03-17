@@ -56,8 +56,10 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
+    "@expo/config-plugins": "^54.0.4",
     "@react-native-community/slider": "5.0.1",
     "expo-camera": "^17.0.10",
+    "expo-face-detector": "^13.0.2",
     "expo-file-system": "^19.0.21",
     "expo-image-manipulator": "^14.0.8",
     "expo-media-library": "^18.2.1",

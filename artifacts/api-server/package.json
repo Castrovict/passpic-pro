@@ -10,12 +10,15 @@
   },
   "dependencies": {
     "@imgly/background-removal-node": "^1.4.5",
+    "@tensorflow/tfjs-node": "^4.22.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
+    "canvas": "^3.2.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2",
     "drizzle-orm": "catalog:",
     "express": "^5",
+    "face-api.js": "^0.22.2",
     "sharp": "^0.34.5"
   },
   "devDependencies": {
