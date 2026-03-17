@@ -130,9 +130,16 @@ export default function CameraScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>{t.appName}</Text>
-            <Text style={styles.subtitle}>{t.appSub}</Text>
+          <View style={styles.headerLeft}>
+            <Image
+              source={require("@/assets/images/icon.png")}
+              style={styles.headerLogo}
+              contentFit="cover"
+            />
+            <View>
+              <Text style={styles.greeting}>{t.appName}</Text>
+              <Text style={styles.subtitle}>{t.appSub}</Text>
+            </View>
           </View>
           <View style={styles.headerRight}>
             <Pressable
@@ -358,9 +365,21 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     marginBottom: 24,
     paddingTop: 8,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  headerLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.15)",
   },
   headerRight: {
     flexDirection: "row",
