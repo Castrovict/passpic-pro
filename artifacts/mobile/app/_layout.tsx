@@ -8,12 +8,11 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { PermissionsGate } from "@/components/PermissionsGate";
 import { PhotoProvider } from "@/context/PhotoContext";
 import { LangProvider } from "@/context/LangContext";
 
@@ -58,7 +57,6 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
-  const [permissionsGranted, setPermissionsGranted] = useState(false);
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
@@ -76,11 +74,7 @@ export default function RootLayout() {
             <KeyboardProvider>
               <LangProvider>
                 <PhotoProvider>
-                  {!permissionsGranted ? (
-                    <PermissionsGate onGranted={() => setPermissionsGranted(true)} />
-                  ) : (
-                    <RootLayoutNav />
-                  )}
+                  <RootLayoutNav />
                 </PhotoProvider>
               </LangProvider>
             </KeyboardProvider>

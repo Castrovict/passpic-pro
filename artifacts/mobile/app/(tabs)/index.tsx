@@ -28,6 +28,7 @@ import { CountryCard } from "@/components/ui/CountryCard";
 import { Button } from "@/components/ui/Button";
 import { CameraModal } from "@/components/CameraModal";
 import { useLang } from "@/context/LangContext";
+import { useCameraPermissions } from "expo-camera";
 
 export default function CameraScreen() {
   const insets = useSafeAreaInsets();
@@ -36,6 +37,7 @@ export default function CameraScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<"front" | "back">("front");
   const [showCameraModal, setShowCameraModal] = useState(false);
+  const [, requestCameraPermission] = useCameraPermissions();
   const isWeb = Platform.OS === "web";
 
   const topPad = isWeb ? 67 : insets.top;
@@ -50,7 +52,11 @@ export default function CameraScreen() {
     setCameraFacing((prev) => (prev === "front" ? "back" : "front"));
   };
 
-  const openCamera = () => {
+  const openCamera = async () => {
+    if (Platform.OS !== "web") {
+      const { granted } = await requestCameraPermission();
+      if (!granted) return;
+    }
     setShowCameraModal(true);
   };
 
