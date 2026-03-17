@@ -9,13 +9,23 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import Colors from "@/constants/colors";
+import { useLang } from "@/context/LangContext";
+import { hasRemoveBgKey } from "@/utils/removeBackground";
 
-const STEPS = [
+const STEPS_EN = [
   "Detecting face...",
-  "Removing background...",
+  "AI background removal...",
   "Applying white background...",
   "Validating quality...",
   "Finalizing photo...",
+];
+
+const STEPS_ES = [
+  "Detectando rostro...",
+  "Eliminando fondo con IA...",
+  "Aplicando fondo blanco...",
+  "Validando calidad...",
+  "Finalizando foto...",
 ];
 
 interface ProcessingAnimationProps {
@@ -23,6 +33,9 @@ interface ProcessingAnimationProps {
 }
 
 export function ProcessingAnimation({ step = 0 }: ProcessingAnimationProps) {
+  const { lang } = useLang();
+  const STEPS = lang === "es" ? STEPS_ES : STEPS_EN;
+  const aiEnabled = hasRemoveBgKey();
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.95);
   const rotate = useSharedValue(0);
@@ -66,6 +79,13 @@ export function ProcessingAnimation({ step = 0 }: ProcessingAnimationProps) {
           <View style={styles.iconInner} />
         </View>
       </View>
+
+      {aiEnabled && (
+        <View style={styles.aiBadge}>
+          <Text style={styles.aiBadgeText}>✦ AI</Text>
+        </View>
+      )}
+
       <Animated.Text style={[styles.stepText, { opacity: opacity.value }]}>
         {STEPS[Math.min(step, STEPS.length - 1)]}
       </Animated.Text>
@@ -139,6 +159,18 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     borderWidth: 2.5,
     borderColor: Colors.white,
+  },
+  aiBadge: {
+    backgroundColor: Colors.cobalt,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  aiBadgeText: {
+    color: Colors.white,
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 11,
+    letterSpacing: 0.5,
   },
   stepText: {
     fontFamily: "Inter_500Medium",

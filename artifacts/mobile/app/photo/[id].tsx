@@ -60,7 +60,7 @@ export default function PhotoDetailScreen() {
     if (photo?.status === "processing") {
       const interval = setInterval(() => {
         setProcessingStep((s) => Math.min(s + 1, 4));
-      }, 600);
+      }, 2200);
       return () => clearInterval(interval);
     }
     if (photo?.status === "done" && photo.processedUri) {

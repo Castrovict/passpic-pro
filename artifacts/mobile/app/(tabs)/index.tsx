@@ -30,6 +30,7 @@ import { CameraModal } from "@/components/CameraModal";
 import { useLang } from "@/context/LangContext";
 import { useCameraPermissions } from "expo-camera";
 import { AdBanner } from "@/components/AdBanner";
+import { removeBackground, hasRemoveBgKey } from "@/utils/removeBackground";
 
 export default function CameraScreen() {
   const insets = useSafeAreaInsets();
@@ -106,15 +107,32 @@ export default function CameraScreen() {
 
     router.push({ pathname: "/photo/[id]", params: { id } });
 
-    setTimeout(() => {
+    try {
+      let finalUri = uri;
+
+      if (hasRemoveBgKey()) {
+        const bgResult = await removeBackground(uri);
+        if (bgResult.success) {
+          finalUri = bgResult.uri;
+        }
+      }
+
+      const validation = simulateValidation(uri);
+      updatePhoto(id, {
+        status: "done",
+        processedUri: finalUri,
+        validationResults: validation,
+      });
+    } catch (e) {
       const validation = simulateValidation(uri);
       updatePhoto(id, {
         status: "done",
         processedUri: uri,
         validationResults: validation,
       });
+    } finally {
       setIsProcessing(false);
-    }, 3000);
+    }
   };
 
   return (
