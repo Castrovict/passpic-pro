@@ -1,43 +1,43 @@
-import React, { useEffect, useState } from "react";
-import { Platform, StyleSheet, View, Text } from "react-native";
-import Colors from "@/constants/colors";
+import React from "react";
+import { StyleSheet, View, Text } from "react-native";
 
-const TEST_BANNER_ID =
-  Platform.OS === "android"
-    ? "ca-app-pub-3940256099942544/6300978111"
-    : "ca-app-pub-3940256099942544/2934735716";
+/**
+ * AdBanner — muestra un placeholder en Expo Go / __DEV__.
+ * En la build de producción (EAS Build para Play Store) reemplaza
+ * este componente con el BannerAd real de react-native-google-mobile-ads.
+ *
+ * Pasos para producción:
+ *  1. Reemplaza los TEST_IDs con tus IDs reales de AdMob.
+ *  2. Haz `eas build --platform android`.
+ *  3. Descomenta el bloque `BannerAd` de abajo y comenta el placeholder.
+ */
 
+// ── IDs de prueba de Google (reemplazar antes de publicar) ──────────────────
+// const BANNER_UNIT_ID =
+//   Platform.OS === "android"
+//     ? "ca-app-pub-TUAPP~TUUNIDAD/BANNERID_ANDROID"
+//     : "ca-app-pub-TUAPP~TUUNIDAD/BANNERID_IOS";
+
+// ── Bloque producción (descomentar en EAS Build) ────────────────────────────
+// import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
+// export function AdBanner() {
+//   return (
+//     <View style={styles.container}>
+//       <BannerAd
+//         unitId={BANNER_UNIT_ID}
+//         size={BannerAdSize.BANNER}
+//         requestOptions={{ requestNonPersonalizedAdsOnly: false }}
+//       />
+//     </View>
+//   );
+// }
+
+// ── Placeholder para Expo Go / desarrollo ───────────────────────────────────
 export function AdBanner() {
-  const [BannerComponent, setBannerComponent] = useState<React.ComponentType<any> | null>(null);
-  const [BannerAdSize, setBannerAdSize] = useState<any>(null);
-  const [adFailed, setAdFailed] = useState(false);
-
-  useEffect(() => {
-    try {
-      const ads = require("react-native-google-mobile-ads");
-      setBannerComponent(() => ads.BannerAd);
-      setBannerAdSize(ads.BannerAdSize?.BANNER ?? "BANNER");
-    } catch {
-      setAdFailed(true);
-    }
-  }, []);
-
-  if (adFailed || !BannerComponent) {
-    return (
-      <View style={styles.placeholder}>
-        <Text style={styles.placeholderText}>Publicidad</Text>
-      </View>
-    );
-  }
-
+  if (!__DEV__) return null; // en producción no mostrar nada hasta descomentar bloque real
   return (
-    <View style={styles.container}>
-      <BannerComponent
-        unitId={TEST_BANNER_ID}
-        size={BannerAdSize}
-        requestOptions={{ requestNonPersonalizedAdsOnly: false }}
-        onAdFailedToLoad={() => setAdFailed(true)}
-      />
+    <View style={styles.placeholder}>
+      <Text style={styles.text}>📢 Espacio para anuncio (AdMob)</Text>
     </View>
   );
 }
@@ -57,11 +57,10 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(255,255,255,0.08)",
   },
-  placeholderText: {
-    color: "rgba(255,255,255,0.25)",
+  text: {
+    color: "rgba(255,255,255,0.3)",
     fontSize: 11,
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
+    letterSpacing: 0.5,
     fontFamily: "Inter_400Regular",
   },
 });
