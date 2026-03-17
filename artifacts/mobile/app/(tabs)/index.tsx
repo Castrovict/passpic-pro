@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/Button";
 import { CameraModal } from "@/components/CameraModal";
 import { useLang } from "@/context/LangContext";
 import { useCameraPermissions } from "expo-camera";
+import { AdBanner } from "@/components/AdBanner";
 
 export default function CameraScreen() {
   const insets = useSafeAreaInsets();
@@ -333,6 +334,8 @@ export default function CameraScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      <AdBanner />
 
       <CameraModal
         visible={showCameraModal}

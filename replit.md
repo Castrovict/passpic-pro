@@ -1,3 +1,23 @@
+# PassPic PRO — Workspace
+
+## Mobile App (PassPic PRO)
+
+**Expo React Native** app in `artifacts/mobile/`:
+
+- **90+ países** organizados por región (Latinoamérica, Europa, Asia, Oriente Medio, África, Oceanía)
+- **Idioma ES/EN** — toggle persistido en AsyncStorage via `LangContext`
+- **Cámara in-app** via `expo-camera` + `CameraModal` — toggle frontal/trasera
+- **Galería** via `expo-image-picker` — permisos pedidos contextualmente
+- **Fondo blanco** — compositing con `react-native-view-shot`
+- **Validación de calidad simulada** con puntuación y checks
+- **AdMob** — `react-native-google-mobile-ads` configurado con IDs de prueba de Google.
+  - Archivos: `AdBanner.native.tsx` (nativo), `AdBanner.web.tsx` (vacío, evita error de bundle)
+  - **IMPORTANTE**: Reemplazar los App ID y Banner ID de prueba con los reales de AdMob antes de publicar
+  - Android App ID: `ca-app-pub-3940256099942544~3347511713` (PRUEBA — reemplazar)
+  - Banner ID: `ca-app-pub-3940256099942544/6300978111` (PRUEBA — reemplazar)
+
+---
+
 # Workspace
 
 ## Overview

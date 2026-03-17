@@ -3,9 +3,9 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
-  FlatList,
   Platform,
   Pressable,
+  SectionList,
   StyleSheet,
   Text,
   TextInput,
@@ -16,25 +16,85 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { COUNTRY_FORMATS, CountryFormat } from "@/constants/countries";
 import { usePhotos } from "@/context/PhotoContext";
+import { useLang } from "@/context/LangContext";
 import { formatDimensions } from "@/utils/photoProcessing";
+import { AdBanner } from "@/components/AdBanner";
+
+const REGIONS: { key: string; label_es: string; label_en: string; codes: string[] }[] = [
+  {
+    key: "latam",
+    label_es: "🌎 Latinoamérica",
+    label_en: "🌎 Latin America",
+    codes: ["MX","AR","BR","CL","CO","PE","VE","EC","BO","PY","UY","CU","DO","GT","HN","SV","NI","CR","PA","PR","HT","JM","TT"],
+  },
+  {
+    key: "north",
+    label_es: "🌎 Norteamérica",
+    label_en: "🌎 North America",
+    codes: ["US","CA"],
+  },
+  {
+    key: "europe",
+    label_es: "🌍 Europa",
+    label_en: "🌍 Europe",
+    codes: ["UK","EU","DE","FR","IT","ES","PT","NL","BE","CH","AT","SE","NO","DK","FI","PL","CZ","RO","HU","GR","RU","UA","HR","SK","BG","RS"],
+  },
+  {
+    key: "mideast",
+    label_es: "🌍 Oriente Medio y Norte de África",
+    label_en: "🌍 Middle East & North Africa",
+    codes: ["AE","SA","TR","IL","IR","EG","MA","DZ","TN","JO","IQ","KW","QA"],
+  },
+  {
+    key: "asia",
+    label_es: "🌏 Asia",
+    label_en: "🌏 Asia",
+    codes: ["IN","CN","JP","KR","SG","TH","VN","MY","ID","PH","PK","BD","NP","LK","MM","KH","TW","HK","MN"],
+  },
+  {
+    key: "oceania",
+    label_es: "🌏 Oceanía",
+    label_en: "🌏 Oceania",
+    codes: ["AU","NZ"],
+  },
+  {
+    key: "africa",
+    label_es: "🌍 África",
+    label_en: "🌍 Africa",
+    codes: ["ZA","NG","GH","KE","ET","TZ","SN","CI","CM"],
+  },
+];
 
 export default function CountrySelectorScreen() {
   const insets = useSafeAreaInsets();
   const { selectedCountry, setSelectedCountry } = usePhotos();
+  const { lang } = useLang();
   const [search, setSearch] = useState("");
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
   const bottomPad = isWeb ? 34 : insets.bottom;
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return COUNTRY_FORMATS;
-    const q = search.toLowerCase();
-    return COUNTRY_FORMATS.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.code.toLowerCase().includes(q)
-    );
-  }, [search]);
+  const countryMap = useMemo(() => {
+    const m: Record<string, CountryFormat> = {};
+    COUNTRY_FORMATS.forEach((c) => { m[c.code] = c; });
+    return m;
+  }, []);
+
+  const sections = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (q) {
+      const results = COUNTRY_FORMATS.filter(
+        (c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)
+      );
+      if (!results.length) return [];
+      return [{ title: lang === "es" ? "Resultados" : "Results", data: results }];
+    }
+
+    return REGIONS.map((r) => ({
+      title: lang === "es" ? r.label_es : r.label_en,
+      data: r.codes.map((code) => countryMap[code]).filter(Boolean) as CountryFormat[],
+    })).filter((s) => s.data.length > 0);
+  }, [search, lang, countryMap]);
 
   const handleSelect = (country: CountryFormat) => {
     Haptics.selectionAsync();
@@ -49,7 +109,9 @@ export default function CountrySelectorScreen() {
         style={[styles.header, { paddingTop: topPad + 12 }]}
       >
         <View style={styles.headerTop}>
-          <Text style={styles.title}>Select Country</Text>
+          <Text style={styles.title}>
+            {lang === "es" ? "Seleccionar País" : "Select Country"}
+          </Text>
           <Pressable
             onPress={() => router.back()}
             style={({ pressed }) => [styles.closeBtn, { opacity: pressed ? 0.6 : 1 }]}
@@ -64,7 +126,7 @@ export default function CountrySelectorScreen() {
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder="Search country..."
+            placeholder={lang === "es" ? "Buscar país..." : "Search country..."}
             placeholderTextColor={Colors.muted}
             style={styles.searchInput}
             returnKeyType="search"
@@ -78,22 +140,32 @@ export default function CountrySelectorScreen() {
         </View>
       </Animated.View>
 
-      <FlatList
-        data={filtered}
+      <SectionList
+        sections={sections}
         keyExtractor={(c) => c.code}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        stickySectionHeadersEnabled={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Feather name="globe" size={32} color={Colors.muted} />
-            <Text style={styles.emptyText}>No countries found for "{search}"</Text>
+            <Text style={styles.emptyText}>
+              {lang === "es"
+                ? `No se encontraron países para "${search}"`
+                : `No countries found for "${search}"`}
+            </Text>
           </View>
         }
+        renderSectionHeader={({ section }) => (
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+          </View>
+        )}
         renderItem={({ item, index }) => {
           const isSelected = selectedCountry.code === item.code;
           return (
-            <Animated.View entering={FadeInDown.delay(Math.min(index * 30, 300)).springify()}>
+            <Animated.View entering={FadeInDown.delay(Math.min(index * 20, 200)).springify()}>
               <Pressable
                 onPress={() => handleSelect(item)}
                 style={({ pressed }) => [
@@ -104,12 +176,7 @@ export default function CountrySelectorScreen() {
               >
                 <Text style={styles.flag}>{item.flag}</Text>
                 <View style={styles.countryInfo}>
-                  <Text
-                    style={[
-                      styles.countryName,
-                      isSelected && styles.countryNameSelected,
-                    ]}
-                  >
+                  <Text style={[styles.countryName, isSelected && styles.countryNameSelected]}>
                     {item.name}
                   </Text>
                   <Text style={styles.countrySpec}>
@@ -124,6 +191,8 @@ export default function CountrySelectorScreen() {
           );
         }}
       />
+
+      <AdBanner />
     </View>
   );
 }
@@ -182,18 +251,30 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 40,
+    paddingTop: 8,
+    paddingBottom: 24,
+  },
+  sectionHeader: {
+    paddingTop: 18,
+    paddingBottom: 8,
+    paddingHorizontal: 4,
+  },
+  sectionTitle: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 13,
+    color: Colors.cobalt,
+    letterSpacing: 0.2,
+    textTransform: "uppercase",
   },
   countryRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     backgroundColor: Colors.white,
-    borderRadius: 14,
-    marginBottom: 8,
-    gap: 14,
+    borderRadius: 12,
+    marginBottom: 6,
+    gap: 12,
     borderWidth: 1.5,
     borderColor: Colors.silver,
   },
@@ -202,7 +283,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cobalt + "06",
   },
   flag: {
-    fontSize: 28,
+    fontSize: 26,
   },
   countryInfo: {
     flex: 1,
@@ -210,7 +291,7 @@ const styles = StyleSheet.create({
   },
   countryName: {
     fontFamily: "Inter_600SemiBold",
-    fontSize: 15,
+    fontSize: 14,
     color: Colors.navy,
     letterSpacing: -0.2,
   },
@@ -219,7 +300,7 @@ const styles = StyleSheet.create({
   },
   countrySpec: {
     fontFamily: "Inter_400Regular",
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.muted,
   },
   emptyState: {

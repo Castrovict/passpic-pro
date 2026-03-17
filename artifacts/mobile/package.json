@@ -58,6 +58,7 @@
   "dependencies": {
     "expo-camera": "^17.0.10",
     "expo-image-manipulator": "^14.0.8",
+    "react-native-google-mobile-ads": "^16.2.3",
     "react-native-view-shot": "^4.0.3"
   }
 }

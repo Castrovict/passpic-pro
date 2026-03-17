@@ -31,6 +31,7 @@ import { formatDimensions, getScoreColor } from "@/utils/photoProcessing";
 import { ProcessingAnimation } from "@/components/ProcessingAnimation";
 import { CheckRow, ValidationBadge } from "@/components/ui/ValidationBadge";
 import { Button } from "@/components/ui/Button";
+import { AdBanner } from "@/components/AdBanner";
 
 export default function PhotoDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -302,6 +303,8 @@ export default function PhotoDetailScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <AdBanner />
     </View>
   );
 }
