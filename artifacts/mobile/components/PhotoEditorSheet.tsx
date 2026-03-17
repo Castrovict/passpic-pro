@@ -78,7 +78,7 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
   const [brightness, setBrightness] = useState(0);
   const [contrast, setContrast] = useState(0);
   const [saturation, setSaturation] = useState(0);
-  const [zoomLevel, setZoomLevel] = useState(0);
+  const [activeZoom, setActiveZoom] = useState<"original" | "leve" | "medio" | "cercano">("original");
   const [currentUri, setCurrentUri] = useState(imageUri);
 
   useEffect(() => {
@@ -87,7 +87,7 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
       setBrightness(0);
       setContrast(0);
       setSaturation(0);
-      setZoomLevel(0);
+      setActiveZoom("original");
       setReady(false);
       setHtml(null);
       loadImage(imageUri);
@@ -175,7 +175,13 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
   };
 
   const handleReset = () => {
-    setBrightness(0); setContrast(0); setSaturation(0); setZoomLevel(0);
+    setBrightness(0); setContrast(0); setSaturation(0);
+    if (activeZoom !== "original") {
+      setActiveZoom("original");
+      setCurrentUri(imageUri);
+      setReady(false); setHtml(null);
+      loadImage(imageUri);
+    }
     Haptics.selectionAsync();
   };
 
@@ -201,27 +207,36 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
   const handleRotateRight = () => applyManipulation([{ rotate: 90 }]);
   const handleFlip = () => applyManipulation([{ flip: ImageManipulator.FlipType.Horizontal }]);
 
-  const handleZoom = async (level: number) => {
-    setZoomLevel(level);
-    if (level === 0) {
+  const ZOOM_PRESETS = {
+    original: 0,
+    leve: 0.15,
+    medio: 0.30,
+    cercano: 0.45,
+  } as const;
+
+  const handleZoomPreset = async (preset: "original" | "leve" | "medio" | "cercano") => {
+    if (preset === activeZoom) return;
+    setActiveZoom(preset);
+    Haptics.selectionAsync();
+    if (preset === "original") {
       setCurrentUri(imageUri);
       setReady(false); setHtml(null);
       await loadImage(imageUri);
       return;
     }
     try {
-      Haptics.selectionAsync();
       const orig = await ImageManipulator.manipulateAsync(imageUri, [], {
         compress: 1,
         format: ImageManipulator.SaveFormat.JPEG,
       });
       const w = orig.width;
       const h = orig.height;
-      const factor = 1 - level / 200;
+      const factor = 1 - ZOOM_PRESETS[preset];
       const cropW = Math.round(w * factor);
       const cropH = Math.round(h * factor);
+      // Bias crop upward — face is in upper portion of passport photo
       const originX = Math.round((w - cropW) / 2);
-      const originY = Math.round((h - cropH) / 2.2);
+      const originY = Math.round((h - cropH) * 0.20);
       const result = await ImageManipulator.manipulateAsync(
         imageUri,
         [
@@ -314,24 +329,38 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
           </View>
 
           {/* Zoom / Face crop */}
-          <Text style={s.sectionLabel}>Acercar Rostro</Text>
-          <View style={s.sliderRow}>
-            <View style={s.sliderLabelRow}>
-              <Feather name="zoom-in" size={14} color="#4ECDC4" />
-              <Text style={s.sliderLabel}>Zoom</Text>
-              <Text style={[s.sliderVal, { color: "#4ECDC4" }]}>{zoomLevel}%</Text>
-            </View>
-            <Slider
-              style={s.slider}
-              minimumValue={0}
-              maximumValue={60}
-              step={5}
-              value={zoomLevel}
-              onSlidingComplete={handleZoom}
-              minimumTrackTintColor="#4ECDC4"
-              maximumTrackTintColor="#2a2a40"
-              thumbTintColor="#4ECDC4"
-            />
+          <View style={s.sectionHeaderRow}>
+            <Text style={s.sectionLabel}>Acercar Rostro</Text>
+            <Feather name="zoom-in" size={13} color="#4ECDC4" />
+          </View>
+          <View style={s.zoomRow}>
+            {(["original", "leve", "medio", "cercano"] as const).map((preset) => {
+              const isActive = activeZoom === preset;
+              const labels = { original: "Original", leve: "Leve +15%", medio: "Medio +30%", cercano: "Cercano +45%" };
+              const icons: Record<string, keyof typeof Feather.glyphMap> = {
+                original: "image", leve: "zoom-in", medio: "zoom-in", cercano: "maximize-2",
+              };
+              return (
+                <Pressable
+                  key={preset}
+                  onPress={() => handleZoomPreset(preset)}
+                  style={({ pressed }) => [
+                    s.zoomBtn,
+                    isActive && s.zoomBtnActive,
+                    { opacity: pressed ? 0.7 : 1 },
+                  ]}
+                >
+                  <Feather
+                    name={icons[preset]}
+                    size={preset === "original" ? 16 : preset === "cercano" ? 22 : 19}
+                    color={isActive ? "#4ECDC4" : Colors.textMuted}
+                  />
+                  <Text style={[s.zoomBtnLabel, isActive && s.zoomBtnLabelActive]}>
+                    {labels[preset]}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           {/* Color adjustments */}
@@ -505,6 +534,43 @@ const s = StyleSheet.create({
     color: Colors.textMuted,
     fontWeight: "600",
     textAlign: "center",
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 10,
+    marginTop: 4,
+  },
+  zoomRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 18,
+  },
+  zoomBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    backgroundColor: "#1a1a2e",
+    borderRadius: 12,
+    paddingVertical: 11,
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: "#2a2a40",
+  },
+  zoomBtnActive: {
+    backgroundColor: "#0d2b2e",
+    borderColor: "#4ECDC4",
+  },
+  zoomBtnLabel: {
+    fontSize: 9,
+    color: Colors.textMuted,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  zoomBtnLabelActive: {
+    color: "#4ECDC4",
   },
   sliderRow: {
     marginBottom: 14,
