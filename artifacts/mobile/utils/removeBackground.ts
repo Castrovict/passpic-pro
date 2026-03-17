@@ -1,4 +1,4 @@
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { Platform } from "react-native";
 
 const REMOVE_BG_KEY = process.env.EXPO_PUBLIC_REMOVE_BG_KEY ?? "";

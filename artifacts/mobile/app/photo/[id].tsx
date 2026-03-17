@@ -4,7 +4,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import * as MediaLibrary from "expo-media-library";
 import { router, useLocalSearchParams } from "expo-router";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -152,17 +152,6 @@ export default function PhotoDetailScreen() {
       setTimeout(() => setSavedOk(false), 3000);
     } catch (e: any) {
       console.warn("[Save] error:", e?.message);
-      try {
-        const canShare = await Sharing.isAvailableAsync();
-        if (canShare) {
-          setSaving(false);
-          await Sharing.shareAsync(dest.startsWith("file://") ? dest : shareUri, {
-            mimeType: "image/jpeg",
-            dialogTitle: lang === "es" ? "Guardar foto de pasaporte" : "Save passport photo",
-          });
-          return;
-        }
-      } catch { /* ignore */ }
       Alert.alert("Error", t.saveError);
     } finally {
       setSaving(false);
