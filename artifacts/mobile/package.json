@@ -57,9 +57,10 @@
   },
   "dependencies": {
     "expo-camera": "^17.0.10",
-    "expo-file-system": "^55.0.10",
+    "expo-file-system": "^19.0.21",
     "expo-image-manipulator": "^14.0.8",
     "expo-media-library": "^18.2.1",
+    "expo-sharing": "^14.0.8",
     "react-native-google-mobile-ads": "^16.2.3",
     "react-native-view-shot": "^4.0.3"
   }

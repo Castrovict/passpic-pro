@@ -4,14 +4,15 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import * as MediaLibrary from "expo-media-library";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Modal,
   Platform,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -22,9 +23,8 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
 } from "react-native-reanimated";
-import ViewShot from "react-native-view-shot";
+import ViewShot, { captureRef } from "react-native-view-shot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { COUNTRY_FORMATS } from "@/constants/countries";
@@ -56,6 +56,16 @@ export default function PhotoDetailScreen() {
 
   const scoreAnim = useSharedValue(0);
 
+  const captureWhiteBg = useCallback(async () => {
+    if (isWeb || !viewShotRef.current) return;
+    try {
+      const uri = await captureRef(viewShotRef, { format: "jpg", quality: 0.97 });
+      setWhiteBgUri(uri);
+    } catch (e) {
+      console.warn("[ViewShot] capture failed:", e);
+    }
+  }, [isWeb]);
+
   useEffect(() => {
     if (photo?.status === "processing") {
       const interval = setInterval(() => {
@@ -64,17 +74,11 @@ export default function PhotoDetailScreen() {
       return () => clearInterval(interval);
     }
     if (photo?.status === "done" && photo.processedUri) {
-      setTimeout(() => {
-        scoreAnim.value = withSpring(
-          (photo.validationResults?.score ?? 0) / 100,
-          { damping: 20, stiffness: 90 }
-        );
-        if (!isWeb && viewShotRef.current) {
-          (viewShotRef.current as any).capture?.().then((uri: string) => {
-            setWhiteBgUri(uri);
-          }).catch(() => {});
-        }
-      }, 600);
+      scoreAnim.value = withSpring(
+        (photo.validationResults?.score ?? 0) / 100,
+        { damping: 20, stiffness: 90 }
+      );
+      setTimeout(captureWhiteBg, 1200);
     }
   }, [photo?.status, photo?.processedUri]);
 
@@ -84,46 +88,65 @@ export default function PhotoDetailScreen() {
 
   const shareUri = whiteBgUri ?? photo?.processedUri ?? null;
 
+  const getLocalUri = async (uri: string): Promise<string> => {
+    if (uri.startsWith("file://") || uri.startsWith("/")) return uri;
+    const dest = `${FileSystem.cacheDirectory}passpic_${Date.now()}.jpg`;
+    const info = await FileSystem.downloadAsync(uri, dest);
+    return info.uri;
+  };
+
   const handleShare = async () => {
     if (!shareUri) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      const msg = lang === "es"
-        ? `Mi foto de pasaporte para ${photo?.countryName} — Generada con PassPic PRO`
-        : `My passport photo for ${photo?.countryName} — Generated with PassPic PRO`;
-      await Share.share({ message: msg, url: shareUri });
-    } catch {
-      console.log("Share cancelled");
+      const isAvailable = !isWeb && await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        const localUri = await getLocalUri(shareUri);
+        await Sharing.shareAsync(localUri, {
+          mimeType: "image/jpeg",
+          dialogTitle: lang === "es"
+            ? `Mi foto de pasaporte — ${photo?.countryName}`
+            : `Passport photo — ${photo?.countryName}`,
+          UTI: "public.jpeg",
+        });
+      } else {
+        const msg = lang === "es"
+          ? `Mi foto de pasaporte para ${photo?.countryName} — Generada con PassPic PRO`
+          : `My passport photo for ${photo?.countryName} — Generated with PassPic PRO`;
+        await import("react-native").then(({ Share }) =>
+          Share.share({ message: msg })
+        );
+      }
+    } catch (e: any) {
+      if (!e?.message?.includes("cancel")) {
+        console.warn("[Share] error:", e?.message);
+      }
     }
   };
 
   const handleSaveToGallery = async () => {
-    if (!shareUri || isWeb) {
-      if (isWeb) {
-        Alert.alert(t.mobileOnly, t.mobileOnlyDesc);
-      }
+    if (isWeb) {
+      Alert.alert(t.mobileOnly, t.mobileOnlyDesc);
       return;
     }
+    if (!shareUri) return;
     setSaving(true);
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          t.permissionDenied,
-          t.permDesc,
-        );
+        Alert.alert(t.permissionDenied, t.permDesc);
         setSaving(false);
         return;
       }
-      await MediaLibrary.saveToLibraryAsync(shareUri);
+      const dest = `${FileSystem.cacheDirectory}passpic_save_${Date.now()}.jpg`;
+      await FileSystem.copyAsync({ from: shareUri, to: dest });
+      await MediaLibrary.saveToLibraryAsync(dest);
       setSavedOk(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setTimeout(() => setSavedOk(false), 3000);
-    } catch {
-      Alert.alert(
-        lang === "es" ? "Error" : "Error",
-        t.saveError
-      );
+    } catch (e: any) {
+      console.warn("[Save] error:", e?.message);
+      Alert.alert("Error", t.saveError);
     } finally {
       setSaving(false);
     }
@@ -213,6 +236,7 @@ export default function PhotoDetailScreen() {
                         source={{ uri: photo.processedUri }}
                         style={styles.photo}
                         contentFit="cover"
+                        onLoadEnd={captureWhiteBg}
                       />
                     ) : (
                       <View style={styles.photoPlaceholder}>
