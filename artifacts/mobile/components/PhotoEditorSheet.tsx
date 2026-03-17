@@ -10,6 +10,8 @@ import {
   Text,
   View,
 } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, { runOnJS, useSharedValue, withTiming } from "react-native-reanimated";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
 import Slider from "@react-native-community/slider";
 import * as FileSystem from "expo-file-system/legacy";
@@ -78,8 +80,11 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
   const [brightness, setBrightness] = useState(0);
   const [contrast, setContrast] = useState(0);
   const [saturation, setSaturation] = useState(0);
-  const [activeZoom, setActiveZoom] = useState<"original" | "leve" | "medio" | "cercano">("original");
+  const [zoomPct, setZoomPct] = useState(0);
+  const [pinchActive, setPinchActive] = useState(false);
+  const [pinchHintPct, setPinchHintPct] = useState(0);
   const [currentUri, setCurrentUri] = useState(imageUri);
+  const pinchScale = useSharedValue(1);
 
   useEffect(() => {
     if (visible) {
@@ -87,7 +92,8 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
       setBrightness(0);
       setContrast(0);
       setSaturation(0);
-      setActiveZoom("original");
+      setZoomPct(0);
+      setPinchActive(false);
       setReady(false);
       setHtml(null);
       loadImage(imageUri);
@@ -176,8 +182,8 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
 
   const handleReset = () => {
     setBrightness(0); setContrast(0); setSaturation(0);
-    if (activeZoom !== "original") {
-      setActiveZoom("original");
+    if (zoomPct !== 0) {
+      setZoomPct(0);
       setCurrentUri(imageUri);
       setReady(false); setHtml(null);
       loadImage(imageUri);
@@ -185,18 +191,12 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
     Haptics.selectionAsync();
   };
 
-  const ZOOM_PRESETS = {
-    original: 0,
-    leve: 0.15,
-    medio: 0.30,
-    cercano: 0.45,
-  } as const;
-
-  const handleZoomPreset = async (preset: "original" | "leve" | "medio" | "cercano") => {
-    if (preset === activeZoom) return;
-    setActiveZoom(preset);
+  const handleCropZoom = async (pct: number) => {
+    const clamped = Math.max(0, Math.min(Math.round(pct), 60));
+    if (clamped === zoomPct) return;
+    setZoomPct(clamped);
     Haptics.selectionAsync();
-    if (preset === "original") {
+    if (clamped === 0) {
       setCurrentUri(imageUri);
       setReady(false); setHtml(null);
       await loadImage(imageUri);
@@ -209,10 +209,9 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
       });
       const w = orig.width;
       const h = orig.height;
-      const factor = 1 - ZOOM_PRESETS[preset];
+      const factor = 1 - clamped / 100;
       const cropW = Math.round(w * factor);
       const cropH = Math.round(h * factor);
-      // Bias crop upward — face is in upper portion of passport photo
       const originX = Math.round((w - cropW) / 2);
       const originY = Math.round((h - cropH) * 0.20);
       const result = await ImageManipulator.manipulateAsync(
@@ -228,6 +227,28 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
       await loadImage(result.uri);
     } catch (e) { console.warn("[Editor] zoom:", e); }
   };
+
+  const pinchGesture = Gesture.Pinch()
+    .onStart(() => {
+      runOnJS(setPinchActive)(true);
+    })
+    .onUpdate((e) => {
+      pinchScale.value = e.scale;
+      const clampedScale = Math.max(1, Math.min(e.scale, 2.5));
+      const pct = Math.round((1 - 1 / clampedScale) * 100);
+      runOnJS(setPinchHintPct)(Math.min(pct, 60));
+    })
+    .onEnd((e) => {
+      pinchScale.value = withTiming(1, { duration: 200 });
+      runOnJS(setPinchActive)(false);
+      const clampedScale = Math.max(1, Math.min(e.scale, 2.5));
+      const pct = Math.round((1 - 1 / clampedScale) * 100);
+      runOnJS(handleCropZoom)(Math.min(pct, 60));
+    })
+    .onFinalize(() => {
+      pinchScale.value = withTiming(1, { duration: 200 });
+      runOnJS(setPinchActive)(false);
+    });
 
   return (
     <Modal
@@ -255,39 +276,55 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
           </Pressable>
         </View>
 
-        {/* Preview */}
-        <View style={[s.preview, { height: PREVIEW_H }]}>
-          {loading && (
-            <View style={s.loadingBox}>
-              <ActivityIndicator size="large" color={Colors.primary} />
-              <Text style={s.loadingTxt}>Cargando imagen...</Text>
-            </View>
-          )}
-          {!loading && html && (
-            <WebView
-              ref={webviewRef}
-              source={{ html }}
-              style={s.webview}
-              onMessage={handleMessage}
-              scrollEnabled={false}
-              bounces={false}
-              javaScriptEnabled
-              originWhitelist={["*"]}
-              allowFileAccess
-              allowUniversalAccessFromFileURLs
-            />
-          )}
-          {!loading && !html && (
-            <View style={s.loadingBox}>
-              <Feather name="image" size={40} color="#2a2a40" />
-            </View>
-          )}
-          {!ready && html && !loading && (
-            <View style={s.loadingOverlay}>
-              <ActivityIndicator size="small" color="#fff" />
-            </View>
-          )}
-        </View>
+        {/* Preview — wrapped in GestureDetector for pinch-to-zoom */}
+        <GestureDetector gesture={pinchGesture}>
+          <Animated.View style={[s.preview, { height: PREVIEW_H }]}>
+            {loading && (
+              <View style={s.loadingBox}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+                <Text style={s.loadingTxt}>Cargando imagen...</Text>
+              </View>
+            )}
+            {!loading && html && (
+              <WebView
+                ref={webviewRef}
+                source={{ html }}
+                style={s.webview}
+                onMessage={handleMessage}
+                scrollEnabled={false}
+                bounces={false}
+                javaScriptEnabled
+                originWhitelist={["*"]}
+                allowFileAccess
+                allowUniversalAccessFromFileURLs
+              />
+            )}
+            {!loading && !html && (
+              <View style={s.loadingBox}>
+                <Feather name="image" size={40} color="#2a2a40" />
+              </View>
+            )}
+            {!ready && html && !loading && (
+              <View style={s.loadingOverlay}>
+                <ActivityIndicator size="small" color="#fff" />
+              </View>
+            )}
+            {/* Pinch hint shown when not zoomed */}
+            {ready && !pinchActive && zoomPct === 0 && (
+              <View style={s.pinchHintBadge} pointerEvents="none">
+                <Feather name="zoom-in" size={11} color="rgba(255,255,255,0.6)" />
+                <Text style={s.pinchHintText}>Pellizca para acercar</Text>
+              </View>
+            )}
+            {/* Live zoom indicator while pinching */}
+            {pinchActive && (
+              <View style={s.zoomIndicator} pointerEvents="none">
+                <Feather name="zoom-in" size={22} color="#4ECDC4" />
+                <Text style={s.zoomIndicatorText}>{pinchHintPct}%</Text>
+              </View>
+            )}
+          </Animated.View>
+        </GestureDetector>
 
         {/* Controls */}
         <ScrollView
@@ -303,34 +340,41 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
             <Feather name="zoom-in" size={13} color="#4ECDC4" />
           </View>
           <View style={s.zoomRow}>
-            {(["original", "leve", "medio", "cercano"] as const).map((preset) => {
-              const isActive = activeZoom === preset;
-              const labels = { original: "Original", leve: "Leve +15%", medio: "Medio +30%", cercano: "Cercano +45%" };
-              const icons: Record<string, keyof typeof Feather.glyphMap> = {
-                original: "image", leve: "zoom-in", medio: "zoom-in", cercano: "maximize-2",
-              };
+            {([
+              { pct: 0,  label: "Original", icon: "image"      },
+              { pct: 15, label: "+15%",     icon: "zoom-in"    },
+              { pct: 30, label: "+30%",     icon: "zoom-in"    },
+              { pct: 45, label: "+45%",     icon: "maximize-2" },
+            ] as const).map(({ pct, label, icon }) => {
+              const isActive = zoomPct === pct || (pct === 45 && zoomPct > 40 && zoomPct <= 60);
+              const isClosest = pct !== 0 && Math.abs(zoomPct - pct) < 8 && zoomPct !== 0;
               return (
                 <Pressable
-                  key={preset}
-                  onPress={() => handleZoomPreset(preset)}
+                  key={pct}
+                  onPress={() => handleCropZoom(pct)}
                   style={({ pressed }) => [
                     s.zoomBtn,
-                    isActive && s.zoomBtnActive,
+                    (isActive || isClosest) && s.zoomBtnActive,
                     { opacity: pressed ? 0.7 : 1 },
                   ]}
                 >
                   <Feather
-                    name={icons[preset]}
-                    size={preset === "original" ? 16 : preset === "cercano" ? 22 : 19}
-                    color={isActive ? "#4ECDC4" : Colors.textMuted}
+                    name={icon as keyof typeof Feather.glyphMap}
+                    size={pct === 0 ? 16 : pct === 45 ? 22 : 19}
+                    color={(isActive || isClosest) ? "#4ECDC4" : Colors.textMuted}
                   />
-                  <Text style={[s.zoomBtnLabel, isActive && s.zoomBtnLabelActive]}>
-                    {labels[preset]}
+                  <Text style={[s.zoomBtnLabel, (isActive || isClosest) && s.zoomBtnLabelActive]}>
+                    {label}
                   </Text>
                 </Pressable>
               );
             })}
           </View>
+          {zoomPct > 0 && (
+            <Text style={s.zoomCurrentTxt}>
+              Zoom actual: {zoomPct}% · Toca un preset o pellizca para ajustar
+            </Text>
+          )}
 
           {/* Color adjustments */}
           <View style={s.sectionHeaderRow}>
@@ -517,6 +561,50 @@ const s = StyleSheet.create({
   },
   zoomBtnLabelActive: {
     color: "#4ECDC4",
+  },
+  zoomCurrentTxt: {
+    fontSize: 11,
+    color: "#4ECDC4",
+    textAlign: "center",
+    marginTop: -8,
+    marginBottom: 12,
+    fontWeight: "600",
+  },
+  pinchHintBadge: {
+    position: "absolute",
+    bottom: 8,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  pinchHintText: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.6)",
+    fontWeight: "500",
+  },
+  zoomIndicator: {
+    position: "absolute",
+    alignSelf: "center",
+    top: "35%",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: "#4ECDC4",
+  },
+  zoomIndicatorText: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#4ECDC4",
+    letterSpacing: -0.5,
   },
   sliderRow: {
     marginBottom: 14,
