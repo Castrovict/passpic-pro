@@ -100,12 +100,7 @@ export default function PhotoDetailScreen() {
   const handleSaveToGallery = async () => {
     if (!shareUri || isWeb) {
       if (isWeb) {
-        Alert.alert(
-          lang === "es" ? "Solo móvil" : "Mobile only",
-          lang === "es"
-            ? "La descarga a galería solo está disponible en el dispositivo móvil."
-            : "Saving to gallery is only available on mobile devices."
-        );
+        Alert.alert(t.mobileOnly, t.mobileOnlyDesc);
       }
       return;
     }
@@ -114,10 +109,8 @@ export default function PhotoDetailScreen() {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
-          lang === "es" ? "Permiso denegado" : "Permission denied",
-          lang === "es"
-            ? "Necesitas permitir acceso a la galería en los ajustes de tu dispositivo."
-            : "Please allow gallery access in your device settings.",
+          t.permissionDenied,
+          t.permDesc,
         );
         setSaving(false);
         return;
@@ -146,8 +139,8 @@ export default function PhotoDetailScreen() {
     return (
       <View style={styles.notFound}>
         <Feather name="alert-circle" size={40} color={Colors.muted} />
-        <Text style={styles.notFoundText}>Photo not found</Text>
-        <Button title="Go Back" onPress={() => router.back()} />
+        <Text style={styles.notFoundText}>{t.noPhotos}</Text>
+        <Button title={t.goBack} onPress={() => router.back()} />
       </View>
     );
   }
@@ -320,21 +313,12 @@ export default function PhotoDetailScreen() {
                 <Text style={styles.cardTitle}>{t.photoSpecs}</Text>
                 <View style={styles.divider} />
                 {[
-                  {
-                    label: lang === "es" ? "País" : "Country",
-                    value: `${country.flag} ${country.name}`,
-                  },
-                  {
-                    label: lang === "es" ? "Dimensiones" : "Dimensions",
-                    value: `${country.widthMm}×${country.heightMm}mm`,
-                  },
-                  { label: lang === "es" ? "Resolución" : "Resolution", value: `${country.dpi} DPI` },
-                  {
-                    label: lang === "es" ? "Tamaño de salida" : "Output Size",
-                    value: `${country.widthPx}×${country.heightPx}px`,
-                  },
+                  { label: t.country, value: `${country.flag} ${country.name}` },
+                  { label: t.dimensions, value: `${country.widthMm}×${country.heightMm}mm` },
+                  { label: t.resolution, value: `${country.dpi} DPI` },
+                  { label: t.outputSize, value: `${country.widthPx}×${country.heightPx}px` },
                   { label: t.background, value: t.backgroundWhite },
-                  { label: lang === "es" ? "Notas" : "Notes", value: country.notes },
+                  { label: t.notes, value: country.notes },
                 ].map(({ label, value }) => (
                   <View key={label} style={styles.specRow}>
                     <Text style={styles.specLabel}>{label}</Text>
@@ -368,7 +352,7 @@ export default function PhotoDetailScreen() {
                 />
               </View>
               <Button
-                title={lang === "es" ? "Nueva Foto" : "New Photo"}
+                title={t.newPhoto}
                 onPress={() => router.back()}
                 variant="ghost"
                 icon={<Feather name="camera" size={16} color={Colors.muted} />}
@@ -460,7 +444,7 @@ export default function PhotoDetailScreen() {
                     )}
                   </View>
                   <Text style={styles.docPhotoLabel}>
-                    {lang === "es" ? "Fondo blanco · Listo para imprimir" : "White background · Print-ready"}
+                    {t.whiteBgReady}
                   </Text>
                 </View>
 
@@ -469,7 +453,7 @@ export default function PhotoDetailScreen() {
                 {/* Specs row */}
                 <View style={styles.docSpecsRow}>
                   {[
-                    { icon: "check-circle", label: lang === "es" ? "Validado" : "Validated", color: Colors.success },
+                    { icon: "check-circle", label: t.validated, color: Colors.success },
                     { icon: "image", label: `${country?.widthPx ?? "—"}×${country?.heightPx ?? "—"}px`, color: Colors.cobalt },
                     { icon: "layers", label: "JPG · 97%", color: Colors.muted },
                   ].map(({ icon, label, color }) => (
@@ -493,11 +477,7 @@ export default function PhotoDetailScreen() {
               >
                 <Feather name={savedOk ? "check" : "download"} size={18} color="#fff" />
                 <Text style={styles.sheetBtnPrimaryText}>
-                  {saving
-                    ? (lang === "es" ? "Guardando..." : "Saving...")
-                    : savedOk
-                    ? (lang === "es" ? "¡Guardado!" : "Saved!")
-                    : t.saveToGallery}
+                  {saving ? t.saving : savedOk ? t.saved : t.saveToGallery}
                 </Text>
               </Pressable>
 

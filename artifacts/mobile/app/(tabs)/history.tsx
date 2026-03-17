@@ -18,18 +18,20 @@ import Colors from "@/constants/colors";
 import { usePhotos } from "@/context/PhotoContext";
 import { PhotoHistoryCard } from "@/components/PhotoHistoryCard";
 import { Button } from "@/components/ui/Button";
+import { useLang } from "@/context/LangContext";
 
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const { photos, deletePhoto } = usePhotos();
+  const { t } = useLang();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
 
   const handleDelete = (id: string) => {
-    Alert.alert("Delete Photo", "Are you sure you want to delete this photo?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t.deletePhoto, t.deleteConfirm, [
+      { text: t.cancel, style: "cancel" },
       {
-        text: "Delete",
+        text: t.delete,
         style: "destructive",
         onPress: () => {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -60,11 +62,11 @@ export default function HistoryScreen() {
         ListHeaderComponent={
           <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.header}>
             <View>
-              <Text style={styles.title}>My Photos</Text>
+              <Text style={styles.title}>{t.myPhotosTitle}</Text>
               <Text style={styles.subtitle}>
                 {photos.length === 0
-                  ? "No photos yet"
-                  : `${donePhotos.length} completed · ${processingPhotos.length} processing`}
+                  ? t.noPhotos
+                  : t.completedProcessing(donePhotos.length, processingPhotos.length)}
               </Text>
             </View>
             {photos.length > 0 && (
@@ -79,12 +81,10 @@ export default function HistoryScreen() {
             <View style={styles.emptyIconWrap}>
               <Feather name="image" size={36} color={Colors.muted} />
             </View>
-            <Text style={styles.emptyTitle}>No photos yet</Text>
-            <Text style={styles.emptyText}>
-              Take or upload a photo to generate your passport photo
-            </Text>
+            <Text style={styles.emptyTitle}>{t.noPhotos}</Text>
+            <Text style={styles.emptyText}>{t.noPhotosDesc}</Text>
             <Button
-              title="Take First Photo"
+              title={t.takeFirstPhoto}
               onPress={() => router.navigate("/")}
               style={styles.emptyBtn}
               icon={<Feather name="camera" size={16} color={Colors.white} />}

@@ -53,7 +53,7 @@ const COLS = 3;
 export default function CountrySelectorScreen() {
   const insets = useSafeAreaInsets();
   const { selectedCountry, setSelectedCountry } = usePhotos();
-  const { lang } = useLang();
+  const { lang, t } = useLang();
   const [search, setSearch] = useState("");
   const [activeRegion, setActiveRegion] = useState<string | null>(null);
   const listRef = useRef<SectionList>(null);
@@ -122,11 +122,9 @@ export default function CountrySelectorScreen() {
       >
         <Animated.View entering={FadeIn.delay(60)} style={styles.headerRow}>
           <View>
-            <Text style={styles.headerTitle}>
-              {lang === "es" ? "Seleccionar País" : "Select Country"}
-            </Text>
+            <Text style={styles.headerTitle}>{t.selectCountry}</Text>
             <Text style={styles.headerSub}>
-              {totalVisible} {lang === "es" ? "países disponibles" : "countries available"}
+              {totalVisible} {t.countriesAvailable}
             </Text>
           </View>
           <Pressable
@@ -143,8 +141,8 @@ export default function CountrySelectorScreen() {
           <Feather name="search" size={15} color="rgba(255,255,255,0.6)" />
           <TextInput
             value={search}
-            onChangeText={(t) => { setSearch(t); setActiveRegion(null); }}
-            placeholder={lang === "es" ? "Buscar país..." : "Search country..."}
+            onChangeText={(val) => { setSearch(val); setActiveRegion(null); }}
+            placeholder={t.searchCountry}
             placeholderTextColor="rgba(255,255,255,0.4)"
             style={styles.searchInput}
             returnKeyType="search"

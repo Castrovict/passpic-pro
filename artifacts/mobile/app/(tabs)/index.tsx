@@ -195,9 +195,7 @@ export default function CameraScreen() {
               { icon: "shield", key: "feat2" },
               { icon: "check-circle", key: "feat3" },
             ].map((f, i) => {
-              const labels = lang === "es"
-                ? ["Fondo Blanco con IA", "50+ Formatos de País", "Validación de Calidad"]
-                : ["AI White Background", "50+ Country Formats", "Quality Validation"];
+              const labels = t.featuresList;
               return (
                 <View key={f.key} style={styles.featureItem}>
                   <View style={styles.featureIcon}>
@@ -275,7 +273,7 @@ export default function CameraScreen() {
                     cameraFacing === "front" && styles.cameraToggleTextActive,
                   ]}
                 >
-                  {lang === "es" ? "Delantera" : "Front"}
+                  {t.frontLabel}
                 </Text>
               </Pressable>
               <Pressable
@@ -296,7 +294,7 @@ export default function CameraScreen() {
                     cameraFacing === "back" && styles.cameraToggleTextActive,
                   ]}
                 >
-                  {lang === "es" ? "Trasera" : "Rear"}
+                  {t.rearLabel}
                 </Text>
               </Pressable>
             </View>
@@ -322,9 +320,7 @@ export default function CameraScreen() {
               <View>
                 <Text style={styles.cameraBtnTitle}>{t.takePhoto}</Text>
                 <Text style={styles.cameraBtnSub}>
-                  {lang === "es"
-                    ? `Cámara ${cameraFacing === "front" ? "delantera" : "trasera"}`
-                    : `${cameraFacing === "front" ? "Front" : "Rear"} camera`}
+                  {t.cameraLabel(cameraFacing)}
                 </Text>
               </View>
             </LinearGradient>
