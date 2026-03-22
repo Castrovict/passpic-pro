@@ -330,8 +330,8 @@ export default function PhotoDetailScreen() {
                       <Feather name="alert-circle" size={13} color={Colors.warning ?? "#F59E0B"} />
                       <Text style={[styles.bgDoneText, styles.bgWarnText]}>
                         {lang === "es"
-                          ? "Sin remoción de fondo · Configura la API key"
-                          : "No bg removal · Configure API key"}
+                          ? "Fondo no procesado · Servidor no disponible"
+                          : "Background not processed · Server unavailable"}
                       </Text>
                     </>
                   ) : (

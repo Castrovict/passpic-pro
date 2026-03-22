@@ -7,11 +7,9 @@
 - **90+ países** organizados por región (Latinoamérica, Europa, Asia, Oriente Medio, África, Oceanía)
 - **Idioma ES/EN** — toggle persistido en AsyncStorage via `LangContext`
 - **Cámara in-app** via `expo-camera` + `CameraModal` — toggle frontal/trasera
-  - **Detección facial en tiempo real**: cada 2s toma un frame de baja calidad y lo envía al servidor
-  - Servidor analiza con detección de tono de piel (YCbCr) + distribución espacial
-  - Feedback visual: óvalo cambia de color (blanco→naranja→verde), badge de estado, checklist biométrico
-  - Auto-disparo: cuenta regresiva 3-2-1 cuando posición es perfecta
-  - Endpoint: `POST /api/analyze-face` → `{ status, message, messageEs }`
+  - Guía visual ICAO: óvalo blanco + línea de ojos amarilla ("OJOS") al 35% desde arriba + checklist estático de posición
+  - El obturador **solo dispara cuando el usuario lo presiona** — sin auto-disparo ni capturas periódicas
+  - El endpoint `POST /api/analyze-face` existe en el servidor (análisis YCbCr) pero ya no se llama desde la cámara
 - **Galería** via `expo-image-picker` — permisos pedidos contextualmente
 - **Fondo blanco gratuito** — motor ONNX local `@imgly/background-removal-node` + `sharp`, sin API key ni costo
   - Endpoint `POST /api/remove-bg` con `sharp` para compositar PNG transparente sobre blanco → JPEG
