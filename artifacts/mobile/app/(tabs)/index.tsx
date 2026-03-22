@@ -173,20 +173,39 @@ export default function CameraScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(150).springify()} style={styles.heroCard}>
+          {/* Passport card mockup with app icon */}
           <View style={styles.passportMock}>
-            <View style={styles.passportInner}>
-              <View style={styles.passportFaceOuter}>
-                <View style={styles.passportFaceInner}>
-                  <Feather name="user" size={40} color={Colors.muted} />
-                </View>
-              </View>
-              <View style={styles.passportLines}>
-                <View style={[styles.passportLine, { width: 80 }]} />
-                <View style={[styles.passportLine, { width: 60 }]} />
-                <View style={[styles.passportLine, { width: 40 }]} />
-              </View>
+            {/* Passport top strip */}
+            <LinearGradient
+              colors={[Colors.cobalt, Colors.cobaltDark]}
+              style={styles.passportStrip}
+            >
+              <Feather name="globe" size={9} color="rgba(255,255,255,0.7)" />
+              <Text style={styles.passportStripText}>PASSPORT</Text>
+            </LinearGradient>
+
+            {/* Photo area — app icon as the "face" */}
+            <View style={styles.passportPhotoWrap}>
+              <Image
+                source={require("@/assets/images/icon.png")}
+                style={styles.passportPhoto}
+                contentFit="cover"
+              />
+              {/* Scan line overlay */}
+              <View style={styles.passportScanLine} />
             </View>
-            <View style={styles.scanLine} />
+
+            {/* MRZ lines at the bottom */}
+            <View style={styles.passportMrz}>
+              <View style={[styles.mrzLine, { width: "100%" }]} />
+              <View style={[styles.mrzLine, { width: "85%" }]} />
+            </View>
+
+            {/* AI badge corner */}
+            <View style={styles.aiBadge}>
+              <Feather name="zap" size={8} color={Colors.white} />
+              <Text style={styles.aiBadgeText}>AI</Text>
+            </View>
           </View>
 
           <View style={styles.featureList}>
@@ -453,52 +472,82 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   passportMock: {
-    width: 80,
-    height: 100,
-    backgroundColor: Colors.offWhite,
-    borderRadius: 8,
+    width: 90,
+    height: 116,
+    backgroundColor: Colors.white,
+    borderRadius: 10,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: Colors.silver,
+    borderWidth: 1.5,
+    borderColor: Colors.cobalt + "30",
+    shadowColor: Colors.cobalt,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 4,
     position: "relative",
   },
-  passportInner: {
-    flex: 1,
-    padding: 8,
+  passportStrip: {
+    flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
   },
-  passportFaceOuter: {
-    width: 44,
-    height: 52,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: Colors.silverMid,
+  passportStripText: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 7,
+    color: Colors.white,
+    letterSpacing: 1,
+  },
+  passportPhotoWrap: {
+    marginHorizontal: 8,
+    marginTop: 4,
+    height: 56,
+    borderRadius: 5,
     overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Colors.silver,
+    backgroundColor: Colors.offWhite,
+    position: "relative",
   },
-  passportFaceInner: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  passportLines: {
-    gap: 4,
+  passportPhoto: {
     width: "100%",
+    height: "100%",
   },
-  passportLine: {
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: Colors.silver,
-  },
-  scanLine: {
+  passportScanLine: {
     position: "absolute",
-    bottom: 0,
     left: 0,
     right: 0,
+    top: "40%",
+    height: 2,
+    backgroundColor: Colors.cobalt + "90",
+  },
+  passportMrz: {
+    marginHorizontal: 6,
+    marginTop: 6,
+    gap: 3,
+  },
+  mrzLine: {
     height: 3,
-    backgroundColor: Colors.cobalt + "80",
+    borderRadius: 1.5,
+    backgroundColor: Colors.silver,
+    alignSelf: "flex-start",
+  },
+  aiBadge: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    backgroundColor: Colors.cobalt,
+    borderBottomLeftRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  aiBadgeText: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 7,
+    color: Colors.white,
+    letterSpacing: 0.5,
   },
   featureList: {
     flex: 1,
