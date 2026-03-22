@@ -372,6 +372,17 @@ export default function CameraScreen() {
           </View>
         </Animated.View>
 
+        {/* Privacy footer link */}
+        <Pressable
+          onPress={() => router.push("/privacy")}
+          style={({ pressed }) => [styles.privacyFooter, { opacity: pressed ? 0.65 : 1 }]}
+        >
+          <Feather name="shield" size={12} color={Colors.muted} />
+          <Text style={styles.privacyFooterText}>
+            {lang === "es" ? "Política de Privacidad" : "Privacy Policy"}
+          </Text>
+        </Pressable>
+
         <View style={{ height: 100 }} />
       </ScrollView>
 
@@ -792,5 +803,19 @@ const styles = StyleSheet.create({
   },
   cameraToggleTextActive: {
     color: Colors.white,
+  },
+  privacyFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingVertical: 14,
+    marginTop: 4,
+  },
+  privacyFooterText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.muted,
+    textDecorationLine: "underline",
   },
 });

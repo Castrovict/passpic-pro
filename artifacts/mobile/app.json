@@ -46,16 +46,24 @@
       [
         "expo-media-library",
         {
-          "photosPermission": "PassPic PRO necesita acceso a tu galería para guardar tus fotos de pasaporte.",
-          "savePhotosPermission": "PassPic PRO necesita permiso para guardar fotos de pasaporte en tu galería.",
+          "photosPermission": "PassPic PRO necesita acceso a tu galería para guardar tus fotos de pasaporte. / PassPic PRO needs access to your gallery to save your passport photos.",
+          "savePhotosPermission": "PassPic PRO necesita permiso para guardar fotos de pasaporte en tu galería. / PassPic PRO needs permission to save passport photos to your gallery.",
           "isAccessMediaLocationEnabled": true
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "PassPic needs access to your photos to process passport photos.",
-          "cameraPermission": "PassPic needs camera access to take your passport photo."
+          "photosPermission": "PassPic PRO necesita acceso a tus fotos para procesar fotos de pasaporte. / PassPic PRO needs access to your photos to process passport photos.",
+          "cameraPermission": "PassPic PRO necesita acceso a la cámara para tomar tu foto de pasaporte. / PassPic PRO needs camera access to take your passport photo."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "PassPic PRO necesita acceso a la cámara para tomar tu foto de pasaporte con guía ICAO. / PassPic PRO needs camera access to take your passport photo with ICAO guide.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ],
       [
@@ -63,7 +71,7 @@
         {
           "androidAppId": "ca-app-pub-3940256099942544~3347511713",
           "iosAppId": "ca-app-pub-3940256099942544~1458002511",
-          "userTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you."
+          "userTrackingUsageDescription": "Este identificador se usará para mostrarte anuncios personalizados. / This identifier will be used to deliver personalized ads to you."
         }
       ]
     ],
