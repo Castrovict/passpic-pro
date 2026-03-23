@@ -12,3 +12,9 @@ id = "jF9PMp1hUhLriaQeZFsap"
 uri = "file://artifacts/mobile/assets/images/splash-brand.png"
 type = "image"
 title = "PassPic PRO — Portada / Marca"
+
+[[outputs]]
+id = "wU19-hDuK-2rDgNiqYbPv"
+uri = "file://artifacts/mobile/store-assets/passpic-mobile.tar.gz"
+type = "unspecified"
+title = "PassPic PRO - Código fuente (8.8 MB)"
