@@ -1,43 +1,30 @@
 import React from "react";
-import { StyleSheet, View, Text } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
+import { BannerAd, BannerAdSize, TestIds } from "react-native-google-mobile-ads";
 
 /**
- * AdBanner — muestra un placeholder en Expo Go / __DEV__.
- * En la build de producción (EAS Build para Play Store) reemplaza
- * este componente con el BannerAd real de react-native-google-mobile-ads.
+ * Banner AdMob — usa IDs de prueba en DEV, reales en producción.
  *
- * Pasos para producción:
- *  1. Reemplaza los TEST_IDs con tus IDs reales de AdMob.
- *  2. Haz `eas build --platform android`.
- *  3. Descomenta el bloque `BannerAd` de abajo y comenta el placeholder.
+ * ANTES DE PUBLICAR: reemplaza BANNER_UNIT_ID_ANDROID con el Ad Unit ID
+ * real de tipo Banner que creaste en la consola de AdMob.
+ * Formato: ca-app-pub-4394857612598690/XXXXXXXXXX
  */
+const BANNER_UNIT_ID_ANDROID = "ca-app-pub-4394857612598690/XXXXXXXXXX"; // ← reemplazar
 
-// ── IDs de prueba de Google (reemplazar antes de publicar) ──────────────────
-// const BANNER_UNIT_ID =
-//   Platform.OS === "android"
-//     ? "ca-app-pub-TUAPP~TUUNIDAD/BANNERID_ANDROID"
-//     : "ca-app-pub-TUAPP~TUUNIDAD/BANNERID_IOS";
+const UNIT_ID = __DEV__
+  ? TestIds.BANNER
+  : Platform.OS === "android"
+  ? BANNER_UNIT_ID_ANDROID
+  : TestIds.BANNER; // iOS no configurado aún
 
-// ── Bloque producción (descomentar en EAS Build) ────────────────────────────
-// import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
-// export function AdBanner() {
-//   return (
-//     <View style={styles.container}>
-//       <BannerAd
-//         unitId={BANNER_UNIT_ID}
-//         size={BannerAdSize.BANNER}
-//         requestOptions={{ requestNonPersonalizedAdsOnly: false }}
-//       />
-//     </View>
-//   );
-// }
-
-// ── Placeholder para Expo Go / desarrollo ───────────────────────────────────
 export function AdBanner() {
-  if (!__DEV__) return null; // en producción no mostrar nada hasta descomentar bloque real
   return (
-    <View style={styles.placeholder}>
-      <Text style={styles.text}>📢 Espacio para anuncio (AdMob)</Text>
+    <View style={styles.container}>
+      <BannerAd
+        unitId={UNIT_ID}
+        size={BannerAdSize.BANNER}
+        requestOptions={{ requestNonPersonalizedAdsOnly: false }}
+      />
     </View>
   );
 }
@@ -46,21 +33,6 @@ const styles = StyleSheet.create({
   container: {
     alignItems: "center",
     backgroundColor: "#0A1628",
-    paddingVertical: 4,
-  },
-  placeholder: {
-    height: 50,
-    width: "100%",
-    backgroundColor: "#111D33",
-    alignItems: "center",
-    justifyContent: "center",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(255,255,255,0.08)",
-  },
-  text: {
-    color: "rgba(255,255,255,0.3)",
-    fontSize: 11,
-    letterSpacing: 0.5,
-    fontFamily: "Inter_400Regular",
+    paddingVertical: 2,
   },
 });

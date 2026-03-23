@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "PassPic PRO",
-    "slug": "mobile",
+    "slug": "passpic-pro",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "passpic-pro",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {

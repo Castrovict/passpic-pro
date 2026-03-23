@@ -1,0 +1,72 @@
+import { useEffect, useRef } from "react";
+import { Platform } from "react-native";
+import {
+  InterstitialAd,
+  AdEventType,
+  TestIds,
+} from "react-native-google-mobile-ads";
+
+/**
+ * Hook de interstitial AdMob.
+ * Pre-carga el anuncio al montar y expone showAd().
+ *
+ * ANTES DE PUBLICAR: reemplaza INTERSTITIAL_UNIT_ID_ANDROID con el
+ * Ad Unit ID real de tipo Intersticial de tu consola AdMob.
+ * Formato: ca-app-pub-4394857612598690/XXXXXXXXXX
+ */
+const INTERSTITIAL_UNIT_ID_ANDROID = "ca-app-pub-4394857612598690/XXXXXXXXXX"; // ← reemplazar
+
+const UNIT_ID = __DEV__
+  ? TestIds.INTERSTITIAL
+  : Platform.OS === "android"
+  ? INTERSTITIAL_UNIT_ID_ANDROID
+  : TestIds.INTERSTITIAL;
+
+export function useInterstitialAd() {
+  const adRef = useRef<InterstitialAd | null>(null);
+  const loadedRef = useRef(false);
+  const shownRef = useRef(false);
+
+  const loadAd = () => {
+    const ad = InterstitialAd.createForAdRequest(UNIT_ID, {
+      requestNonPersonalizedAdsOnly: false,
+    });
+
+    const unsubLoaded = ad.addEventListener(AdEventType.LOADED, () => {
+      loadedRef.current = true;
+    });
+
+    const unsubError = ad.addEventListener(AdEventType.ERROR, () => {
+      loadedRef.current = false;
+    });
+
+    const unsubClosed = ad.addEventListener(AdEventType.CLOSED, () => {
+      loadedRef.current = false;
+      shownRef.current = false;
+      unsubLoaded();
+      unsubError();
+      unsubClosed();
+      // Pre-carga el siguiente
+      setTimeout(loadAd, 500);
+    });
+
+    ad.load();
+    adRef.current = ad;
+  };
+
+  useEffect(() => {
+    loadAd();
+    return () => {
+      adRef.current = null;
+    };
+  }, []);
+
+  const showAd = () => {
+    if (!shownRef.current && loadedRef.current && adRef.current) {
+      shownRef.current = true;
+      adRef.current.show();
+    }
+  };
+
+  return { showAd };
+}

@@ -35,6 +35,7 @@ import { ProcessingAnimation } from "@/components/ProcessingAnimation";
 import { CheckRow, ValidationBadge } from "@/components/ui/ValidationBadge";
 import { Button } from "@/components/ui/Button";
 import { AdBanner } from "@/components/AdBanner";
+import { useInterstitialAd } from "@/components/AdInterstitial";
 import PhotoEditorSheet from "@/components/PhotoEditorSheet";
 
 export default function PhotoDetailScreen() {
@@ -42,6 +43,7 @@ export default function PhotoDetailScreen() {
   const { getPhoto, updatePhoto } = usePhotos();
   const { t, lang } = useLang();
   const insets = useSafeAreaInsets();
+  const { showAd } = useInterstitialAd();
   const [processingStep, setProcessingStep] = useState(0);
   const [whiteBgUri, setWhiteBgUri] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -106,6 +108,8 @@ export default function PhotoDetailScreen() {
         { damping: 20, stiffness: 90 }
       );
       setTimeout(captureWhiteBg, 1200);
+      // Muestra interstitial 2s después de que se muestra el resultado
+      setTimeout(showAd, 2000);
     }
   }, [photo?.status, photo?.processedUri]);
 
