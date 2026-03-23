@@ -5,11 +5,10 @@ import { BannerAd, BannerAdSize, TestIds } from "react-native-google-mobile-ads"
 /**
  * Banner AdMob — usa IDs de prueba en DEV, reales en producción.
  *
- * ANTES DE PUBLICAR: reemplaza BANNER_UNIT_ID_ANDROID con el Ad Unit ID
- * real de tipo Banner que creaste en la consola de AdMob.
- * Formato: ca-app-pub-4394857612598690/XXXXXXXXXX
+ * Banner Unit ID: ca-app-pub-4394857612598690/6430674069
+ * En __DEV__ usa los IDs de prueba de Google automáticamente.
  */
-const BANNER_UNIT_ID_ANDROID = "ca-app-pub-4394857612598690/XXXXXXXXXX"; // ← reemplazar
+const BANNER_UNIT_ID_ANDROID = "ca-app-pub-4394857612598690/6430674069";
 
 const UNIT_ID = __DEV__
   ? TestIds.BANNER

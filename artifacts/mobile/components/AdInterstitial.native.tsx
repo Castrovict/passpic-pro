@@ -10,11 +10,10 @@ import {
  * Hook de interstitial AdMob.
  * Pre-carga el anuncio al montar y expone showAd().
  *
- * ANTES DE PUBLICAR: reemplaza INTERSTITIAL_UNIT_ID_ANDROID con el
- * Ad Unit ID real de tipo Intersticial de tu consola AdMob.
- * Formato: ca-app-pub-4394857612598690/XXXXXXXXXX
+ * Interstitial Unit ID: ca-app-pub-4394857612598690/4880821071
+ * En __DEV__ usa los IDs de prueba de Google automáticamente.
  */
-const INTERSTITIAL_UNIT_ID_ANDROID = "ca-app-pub-4394857612598690/XXXXXXXXXX"; // ← reemplazar
+const INTERSTITIAL_UNIT_ID_ANDROID = "ca-app-pub-4394857612598690/4880821071";
 
 const UNIT_ID = __DEV__
   ? TestIds.INTERSTITIAL
