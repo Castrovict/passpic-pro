@@ -18,3 +18,9 @@ id = "wU19-hDuK-2rDgNiqYbPv"
 uri = "file://artifacts/mobile/store-assets/passpic-mobile.tar.gz"
 type = "unspecified"
 title = "PassPic PRO - Código fuente (8.8 MB)"
+
+[[outputs]]
+id = "UNpVC3V6IpguqHaOSkkY7"
+uri = "file://artifacts/mobile/store-assets/passpic-standalone.tar.gz"
+type = "unspecified"
+title = "PassPic PRO - Versión independiente (17.5 MB)"
