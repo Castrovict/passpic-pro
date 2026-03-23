@@ -60,3 +60,9 @@ id = "sG0l782rZM8Pva0cSo5IX"
 uri = "file://artifacts/mobile/store-assets/screenshot-4-countries.png"
 type = "image"
 title = "Captura 4 — Selector de países"
+
+[[outputs]]
+id = "rSonwV4P1mtKOQ6DLNiiM"
+uri = "file://artifacts/mobile/store-assets/testers.csv"
+type = "table"
+title = "Lista de verificadores (CSV)"
