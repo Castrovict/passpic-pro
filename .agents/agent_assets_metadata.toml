@@ -24,3 +24,9 @@ id = "UNpVC3V6IpguqHaOSkkY7"
 uri = "file://artifacts/mobile/store-assets/passpic-standalone.tar.gz"
 type = "unspecified"
 title = "PassPic PRO - Versión independiente (17.5 MB)"
+
+[[outputs]]
+id = "zGU_Lz64f7Et7pWbLIpK8"
+uri = "file://artifacts/mobile/store-assets/icon-512.png"
+type = "image"
+title = "Ícono de App — 512×512 px"
