@@ -36,3 +36,27 @@ id = "eK0jPcknceFGAZ0dNFcTv"
 uri = "file://artifacts/mobile/store-assets/feature-graphic.png"
 type = "image"
 title = "Gráfico de Funciones — 1024×500 px"
+
+[[outputs]]
+id = "TgB27GXzEi0RRsQvipo3b"
+uri = "file://artifacts/mobile/store-assets/screenshot-1-home.png"
+type = "image"
+title = "Captura 1 — Pantalla principal"
+
+[[outputs]]
+id = "JL9j89K6jLx_4klgsUfuO"
+uri = "file://artifacts/mobile/store-assets/screenshot-2-camera.png"
+type = "image"
+title = "Captura 2 — Cámara con guía ICAO"
+
+[[outputs]]
+id = "UTL2c71yzbCRgQYxrS8o6"
+uri = "file://artifacts/mobile/store-assets/screenshot-3-result.png"
+type = "image"
+title = "Captura 3 — Resultado final"
+
+[[outputs]]
+id = "sG0l782rZM8Pva0cSo5IX"
+uri = "file://artifacts/mobile/store-assets/screenshot-4-countries.png"
+type = "image"
+title = "Captura 4 — Selector de países"
