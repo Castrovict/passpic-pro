@@ -30,3 +30,9 @@ id = "zGU_Lz64f7Et7pWbLIpK8"
 uri = "file://artifacts/mobile/store-assets/icon-512.png"
 type = "image"
 title = "Ícono de App — 512×512 px"
+
+[[outputs]]
+id = "eK0jPcknceFGAZ0dNFcTv"
+uri = "file://artifacts/mobile/store-assets/feature-graphic.png"
+type = "image"
+title = "Gráfico de Funciones — 1024×500 px"
