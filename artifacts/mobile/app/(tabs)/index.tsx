@@ -3,7 +3,7 @@ import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, ErrorBoundaryProps } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
@@ -819,3 +819,22 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
   },
 });
+
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return (
+    <View style={{ flex: 1, backgroundColor: "#F4F6FA", alignItems: "center", justifyContent: "center", padding: 32 }}>
+      <Text style={{ fontSize: 18, fontWeight: "600", color: "#0A1628", textAlign: "center", marginBottom: 8 }}>
+        Algo salió mal
+      </Text>
+      <Text style={{ fontSize: 14, color: "#8E9BB5", textAlign: "center", marginBottom: 24 }}>
+        No se pudo cargar la pantalla.
+      </Text>
+      <Pressable
+        onPress={retry}
+        style={{ backgroundColor: "#2563EB", paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
+      >
+        <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>Volver a intentar</Text>
+      </Pressable>
+    </View>
+  );
+}

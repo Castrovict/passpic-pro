@@ -27,30 +27,33 @@ export function useInterstitialAd() {
   const shownRef = useRef(false);
 
   const loadAd = () => {
-    const ad = InterstitialAd.createForAdRequest(UNIT_ID, {
-      requestNonPersonalizedAdsOnly: false,
-    });
+    try {
+      const ad = InterstitialAd.createForAdRequest(UNIT_ID, {
+        requestNonPersonalizedAdsOnly: false,
+      });
 
-    const unsubLoaded = ad.addEventListener(AdEventType.LOADED, () => {
-      loadedRef.current = true;
-    });
+      const unsubLoaded = ad.addEventListener(AdEventType.LOADED, () => {
+        loadedRef.current = true;
+      });
 
-    const unsubError = ad.addEventListener(AdEventType.ERROR, () => {
-      loadedRef.current = false;
-    });
+      const unsubError = ad.addEventListener(AdEventType.ERROR, () => {
+        loadedRef.current = false;
+      });
 
-    const unsubClosed = ad.addEventListener(AdEventType.CLOSED, () => {
-      loadedRef.current = false;
-      shownRef.current = false;
-      unsubLoaded();
-      unsubError();
-      unsubClosed();
-      // Pre-carga el siguiente
-      setTimeout(loadAd, 500);
-    });
+      const unsubClosed = ad.addEventListener(AdEventType.CLOSED, () => {
+        loadedRef.current = false;
+        shownRef.current = false;
+        unsubLoaded();
+        unsubError();
+        unsubClosed();
+        setTimeout(loadAd, 500);
+      });
 
-    ad.load();
-    adRef.current = ad;
+      try { ad.load(); } catch (e) { console.warn("[AdInterstitial] load() failed:", e); }
+      adRef.current = ad;
+    } catch (e) {
+      console.warn("[AdInterstitial] createForAdRequest failed:", e);
+    }
   };
 
   useEffect(() => {

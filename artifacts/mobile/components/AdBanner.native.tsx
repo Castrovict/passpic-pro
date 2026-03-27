@@ -1,6 +1,13 @@
-import React from "react";
+import React, { Component, ReactNode } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { BannerAd, BannerAdSize, TestIds } from "react-native-google-mobile-ads";
+
+class AdSafeWrapper extends Component<{ children: ReactNode }, { crashed: boolean }> {
+  state = { crashed: false };
+  static getDerivedStateFromError() { return { crashed: true }; }
+  componentDidCatch(e: Error) { console.warn("[AdBanner] render error caught:", e.message); }
+  render() { return this.state.crashed ? null : this.props.children; }
+}
 
 /**
  * Banner AdMob — usa IDs de prueba en DEV, reales en producción.
@@ -18,13 +25,15 @@ const UNIT_ID = __DEV__
 
 export function AdBanner() {
   return (
-    <View style={styles.container}>
-      <BannerAd
-        unitId={UNIT_ID}
-        size={BannerAdSize.BANNER}
-        requestOptions={{ requestNonPersonalizedAdsOnly: false }}
-      />
-    </View>
+    <AdSafeWrapper>
+      <View style={styles.container}>
+        <BannerAd
+          unitId={UNIT_ID}
+          size={BannerAdSize.BANNER}
+          requestOptions={{ requestNonPersonalizedAdsOnly: false }}
+        />
+      </View>
+    </AdSafeWrapper>
   );
 }
 
