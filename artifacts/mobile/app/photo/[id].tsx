@@ -5,9 +5,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as MediaLibrary from "expo-media-library";
 import { router, useLocalSearchParams, ErrorBoundaryProps } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as Sharing from "expo-sharing";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { captureRef } from "react-native-view-shot";
+import { WebView } from "react-native-webview";
+import type { WebViewMessageEvent } from "react-native-webview";
 import { ErrorBoundary as ScreenBoundary } from "@/components/ErrorBoundary";
 import {
   Alert,
@@ -44,7 +46,8 @@ function PhotoDetailScreenInner() {
   const [savedOk, setSavedOk] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
   const [whiteBgUri, setWhiteBgUri] = useState<string | null>(null);
-  const whiteBgRef = useRef<View>(null);
+  const [compositorHtml, setCompositorHtml] = useState<string | null>(null);
+  const compositorRef = useRef<WebView>(null);
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
   const bottomPad = isWeb ? 34 : insets.bottom;
@@ -54,17 +57,61 @@ function PhotoDetailScreenInner() {
 
   const [scoreWidth, setScoreWidth] = useState("0%");
 
-  const captureWhiteBg = useCallback(async () => {
+  const buildCompositor = useCallback(async (photoUri: string, widthMm: number, heightMm: number) => {
     if (isWeb) return;
-    await new Promise((r) => setTimeout(r, 900));
-    if (!whiteBgRef.current) return;
     try {
-      const uri = await captureRef(whiteBgRef, { format: "jpg", quality: 0.97 });
-      setWhiteBgUri(uri);
+      let workUri = photoUri;
+      const info = await FileSystem.getInfoAsync(photoUri);
+      if (info.exists && (info as any).size > 2_000_000) {
+        const resized = await ImageManipulator.manipulateAsync(
+          photoUri,
+          [{ resize: { width: 1000 } }],
+          { compress: 0.88, format: ImageManipulator.SaveFormat.JPEG }
+        );
+        workUri = resized.uri;
+      }
+      const b64 = await FileSystem.readAsStringAsync(workUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const ext = photoUri.toLowerCase().endsWith(".png") ? "png" : "jpeg";
+      const cw = 600;
+      const ch = Math.round(cw * (heightMm / widthMm));
+      const html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{margin:0;padding:0;}body{background:#fff;overflow:hidden;}</style></head><body>
+<canvas id="c" width="${cw}" height="${ch}"></canvas>
+<script>
+var img=new Image();
+img.onload=function(){
+  var c=document.getElementById('c');
+  var ctx=c.getContext('2d');
+  ctx.fillStyle='#ffffff';
+  ctx.fillRect(0,0,c.width,c.height);
+  ctx.drawImage(img,0,0,c.width,c.height);
+  window.ReactNativeWebView.postMessage(JSON.stringify({type:'WHITEBG',data:c.toDataURL('image/jpeg',0.95)}));
+};
+img.src='data:image/${ext};base64,${b64}';
+</script></body></html>`;
+      setCompositorHtml(html);
     } catch (e) {
-      console.warn("[captureRef] failed:", e);
+      console.warn("[compositor] build failed:", e);
     }
   }, [isWeb]);
+
+  const handleCompositorMessage = useCallback(async (event: WebViewMessageEvent) => {
+    try {
+      const msg = JSON.parse(event.nativeEvent.data);
+      if (msg.type === "WHITEBG" && msg.data) {
+        const raw = (msg.data as string).replace(/^data:image\/\w+;base64,/, "");
+        const dest = `${FileSystem.cacheDirectory}whitebg_${Date.now()}.jpg`;
+        await FileSystem.writeAsStringAsync(dest, raw, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        setWhiteBgUri(dest);
+        setCompositorHtml(null);
+      }
+    } catch (e) {
+      console.warn("[compositor] message failed:", e);
+    }
+  }, []);
 
   useEffect(() => {
     if (photo?.status === "processing") {
@@ -77,7 +124,10 @@ function PhotoDetailScreenInner() {
       const pct = Math.round(photo.validationResults?.score ?? 0);
       setScoreWidth(pct + "%");
       setTimeout(showAd, 2000);
-      captureWhiteBg();
+      setWhiteBgUri(null);
+      const wMm = country?.widthMm ?? 35;
+      const hMm = country?.heightMm ?? 45;
+      buildCompositor(photo.processedUri, wMm, hMm);
     }
   }, [photo?.status, photo?.processedUri]);
 
@@ -227,7 +277,7 @@ function PhotoDetailScreenInner() {
         ) : (
           <>
             <View style={styles.photoFrame}>
-              <View style={styles.whiteBgContainer} ref={whiteBgRef} collapsable={false}>
+              <View style={styles.whiteBgContainer}>
                   <View
                     style={[
                       styles.passportFrame,
@@ -557,6 +607,26 @@ function PhotoDetailScreenInner() {
           onClose={() => setShowEditor(false)}
           onApply={handleEditorApply}
         />
+      )}
+
+      {/* ── Hidden WebView compositor: draws photo on white canvas ─────────── */}
+      {compositorHtml && !isWeb && (
+        <View
+          style={{ position: "absolute", width: 1, height: 1, overflow: "hidden" }}
+          pointerEvents="none"
+        >
+          <WebView
+            ref={compositorRef}
+            source={{ html: compositorHtml }}
+            style={{ width: 600, height: 800 }}
+            onMessage={handleCompositorMessage}
+            javaScriptEnabled
+            scrollEnabled={false}
+            originWhitelist={["*"]}
+            allowFileAccess
+            allowUniversalAccessFromFileURLs
+          />
+        </View>
       )}
     </View>
   );

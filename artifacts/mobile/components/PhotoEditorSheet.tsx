@@ -66,7 +66,7 @@ function cssFilter(br: number, co: number, sa: number): string {
 }
 
 export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }: Props) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const insets = useSafeAreaInsets();
   const webviewRef = useRef<WebView>(null);
 
@@ -372,8 +372,32 @@ export default function PhotoEditorSheet({ visible, imageUri, onClose, onApply }
             onChange={setSaturation} color="#FF6B6B"
           />
 
-          <View style={{ height: 12 }} />
+          <View style={{ height: 8 }} />
         </ScrollView>
+
+        {/* Save button */}
+        <View style={s.saveBar}>
+          <Pressable
+            onPress={handleApply}
+            disabled={applying || !ready}
+            style={({ pressed }) => [
+              s.saveBtn,
+              (applying || !ready) && s.saveBtnDisabled,
+              { opacity: pressed ? 0.8 : 1 },
+            ]}
+          >
+            {applying ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Feather name="save" size={17} color="#fff" />
+                <Text style={s.saveBtnText}>
+                  {lang === "es" ? "Guardar Cambios" : "Save Changes"}
+                </Text>
+              </>
+            )}
+          </Pressable>
+        </View>
       </View>
     </Modal>
   );
@@ -581,5 +605,29 @@ const s = StyleSheet.create({
     width: "100%",
     height: Platform.OS === "ios" ? 30 : 42,
     marginTop: -2,
+  },
+  saveBar: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#1e1e30",
+  },
+  saveBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 15,
+  },
+  saveBtnDisabled: {
+    opacity: 0.4,
+  },
+  saveBtnText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
+    letterSpacing: 0.2,
   },
 });
