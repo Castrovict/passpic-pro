@@ -6,9 +6,11 @@ const router: IRouter = Router();
  * POST /api/remove-bg
  * Removes background from a portrait image and returns a white-background JPEG.
  *
- * Priority:
- *  1. remove.bg API  — if REMOVE_BG_API_KEY env var is set (best quality)
- *  2. @imgly/background-removal-node — fully local ONNX inference, no API key
+ * Pipeline (ICAO compliant):
+ *  A. Resize to max 800px wide  → prevents OOM on Replit
+ *  B. @imgly/background-removal-node → transparent PNG (local ONNX, free, unlimited)
+ *  C. sharp .flatten({ background: white }) → ICAO pure white background
+ *  D. Return JPEG quality 90
  *
  * Body:   { image_base64: string }
  * Returns: { image_base64: string, content_type: "image/jpeg" }
@@ -20,55 +22,29 @@ router.post("/remove-bg", async (req, res) => {
     return;
   }
 
-  const apiKey = process.env["REMOVE_BG_API_KEY"];
-
-  // ── Strategy 1: remove.bg paid API ──────────────────────────────────────
-  if (apiKey) {
-    try {
-      const form = new FormData();
-      form.append("image_file_b64", image_base64);
-      form.append("size", "auto");
-      form.append("type", "person");
-      form.append("bg_color", "ffffff");
-      form.append("format", "jpg");
-
-      const upstream = await fetch("https://api.remove.bg/v1.0/removebg", {
-        method: "POST",
-        headers: { "X-Api-Key": apiKey },
-        body: form,
-      });
-
-      if (upstream.ok) {
-        const buf = Buffer.from(await upstream.arrayBuffer());
-        res.json({ image_base64: buf.toString("base64"), content_type: "image/jpeg" });
-        return;
-      }
-      console.warn("[remove-bg] remove.bg error, falling back to local ML");
-    } catch (e: any) {
-      console.warn("[remove-bg] remove.bg exception, falling back:", e?.message);
-    }
-  }
-
-  // ── Strategy 2: Local ONNX ML inference (free, no API key) ───────────────
   let tmpInput: string | undefined;
   try {
-    console.log("[remove-bg] Local ML inference (first run downloads model ~80 MB)…");
-
     const { removeBackground } = await import("@imgly/background-removal-node");
     const sharp = (await import("sharp")).default;
     const { writeFileSync, unlinkSync } = await import("fs");
     const { tmpdir } = await import("os");
     const { join } = await import("path");
 
-    // Write input to a temp file so the library can auto-detect format reliably
     const inputBuf = Buffer.from(image_base64, "base64");
+
+    // ── A. Resize to max 800px wide (anti-OOM) ────────────────────────────────
+    console.log("[remove-bg] Step A: resizing to max 800px wide…");
+    const resizedBuf = await sharp(inputBuf)
+      .resize({ width: 800, withoutEnlargement: true })
+      .jpeg({ quality: 95 })
+      .toBuffer();
+
+    // Write resized image to temp file for @imgly/background-removal-node
     tmpInput = join(tmpdir(), `rmbg_in_${Date.now()}.jpg`);
+    writeFileSync(tmpInput, resizedBuf);
 
-    // Convert to JPEG first (handles any source format cleanly)
-    const jpegInput = await sharp(inputBuf).jpeg({ quality: 95 }).toBuffer();
-    writeFileSync(tmpInput, jpegInput);
-
-    // Run ONNX model with file:// URL → transparent PNG blob
+    // ── B. Local ONNX background removal ─────────────────────────────────────
+    console.log("[remove-bg] Step B: running ONNX background removal (first run downloads model ~80MB)…");
     const fileUrl = `file://${tmpInput}`;
     const blob = await removeBackground(fileUrl, {
       model: "medium",
@@ -79,24 +55,34 @@ router.post("/remove-bg", async (req, res) => {
     } as any);
 
     const transparentPng = Buffer.from(await blob.arrayBuffer());
+    try { unlinkSync(tmpInput); tmpInput = undefined; } catch {}
 
-    // Composite transparent PNG on white, export JPEG
+    // ── C. Flatten transparent pixels → ICAO pure white + encode JPEG ────────
+    console.log("\n[remove-bg] Step C: compositing on white (ICAO)…");
     const { width = 600, height = 800 } = await sharp(transparentPng).metadata();
+
     const jpeg = await sharp({
-      create: { width, height, channels: 3, background: { r: 255, g: 255, b: 255 } },
+      create: {
+        width,
+        height,
+        channels: 3,
+        background: { r: 255, g: 255, b: 255 },
+      },
     })
       .composite([{ input: transparentPng }])
       .flatten({ background: { r: 255, g: 255, b: 255 } })
-      .jpeg({ quality: 95 })
+      .jpeg({ quality: 90 })
       .toBuffer();
 
-    try { unlinkSync(tmpInput); } catch {}
-
-    console.log("\n[remove-bg] Local ML done, output:", jpeg.length, "bytes");
+    // ── D. Return result ──────────────────────────────────────────────────────
+    console.log("[remove-bg] Done. Output:", jpeg.length, "bytes");
     res.json({ image_base64: jpeg.toString("base64"), content_type: "image/jpeg" });
+
   } catch (e: any) {
-    if (tmpInput) try { const { unlinkSync } = await import("fs"); unlinkSync(tmpInput); } catch {}
-    console.error("\n[remove-bg] Local ML failed:", e?.message ?? e);
+    if (tmpInput) {
+      try { const { unlinkSync } = await import("fs"); unlinkSync(tmpInput); } catch {}
+    }
+    console.error("\n[remove-bg] Failed:", e?.message ?? e);
     res.status(500).json({ error: `Background removal failed: ${e?.message ?? "unknown error"}` });
   }
 });
