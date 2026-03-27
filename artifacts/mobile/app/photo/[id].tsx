@@ -55,7 +55,9 @@ function PhotoDetailScreenInner() {
   const [scoreWidth, setScoreWidth] = useState("0%");
 
   const captureWhiteBg = useCallback(async () => {
-    if (isWeb || !whiteBgRef.current) return;
+    if (isWeb) return;
+    await new Promise((r) => setTimeout(r, 900));
+    if (!whiteBgRef.current) return;
     try {
       const uri = await captureRef(whiteBgRef, { format: "jpg", quality: 0.97 });
       setWhiteBgUri(uri);
@@ -75,6 +77,7 @@ function PhotoDetailScreenInner() {
       const pct = Math.round(photo.validationResults?.score ?? 0);
       setScoreWidth(pct + "%");
       setTimeout(showAd, 2000);
+      captureWhiteBg();
     }
   }, [photo?.status, photo?.processedUri]);
 
@@ -241,7 +244,6 @@ function PhotoDetailScreenInner() {
                         style={styles.photo}
                         contentFit="cover"
                         contentPosition="top center"
-                        onLoadEnd={captureWhiteBg}
                       />
                     ) : (
                       <View style={styles.photoPlaceholder}>
