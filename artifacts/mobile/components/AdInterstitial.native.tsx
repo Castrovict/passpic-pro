@@ -1,33 +1,34 @@
 import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
-import {
-  InterstitialAd,
-  AdEventType,
-  TestIds,
-} from "react-native-google-mobile-ads";
 
-/**
- * Hook de interstitial AdMob.
- * Pre-carga el anuncio al montar y expone showAd().
- *
- * Interstitial Unit ID: ca-app-pub-4394857612598690/4880821071
- * En __DEV__ usa los IDs de prueba de Google automáticamente.
- */
+let InterstitialAd: any = null;
+let AdEventType: any = null;
+let TestIds: any = null;
+try {
+  const admob = require("react-native-google-mobile-ads");
+  InterstitialAd = admob.InterstitialAd;
+  AdEventType = admob.AdEventType;
+  TestIds = admob.TestIds;
+} catch (e) {
+  console.warn("[AdInterstitial] AdMob not available:", e);
+}
+
 const INTERSTITIAL_UNIT_ID_ANDROID = "ca-app-pub-4394857612598690/4880821071";
 
-const UNIT_ID = __DEV__
-  ? TestIds.INTERSTITIAL
-  : Platform.OS === "android"
-  ? INTERSTITIAL_UNIT_ID_ANDROID
-  : TestIds.INTERSTITIAL;
-
 export function useInterstitialAd() {
-  const adRef = useRef<InterstitialAd | null>(null);
+  const adRef = useRef<any>(null);
   const loadedRef = useRef(false);
   const shownRef = useRef(false);
 
   const loadAd = () => {
+    if (!InterstitialAd || !AdEventType || !TestIds) return;
     try {
+      const UNIT_ID = __DEV__
+        ? TestIds.INTERSTITIAL
+        : Platform.OS === "android"
+        ? INTERSTITIAL_UNIT_ID_ANDROID
+        : TestIds.INTERSTITIAL;
+
       const ad = InterstitialAd.createForAdRequest(UNIT_ID, {
         requestNonPersonalizedAdsOnly: false,
       });
@@ -35,11 +36,9 @@ export function useInterstitialAd() {
       const unsubLoaded = ad.addEventListener(AdEventType.LOADED, () => {
         loadedRef.current = true;
       });
-
       const unsubError = ad.addEventListener(AdEventType.ERROR, () => {
         loadedRef.current = false;
       });
-
       const unsubClosed = ad.addEventListener(AdEventType.CLOSED, () => {
         loadedRef.current = false;
         shownRef.current = false;
@@ -58,15 +57,13 @@ export function useInterstitialAd() {
 
   useEffect(() => {
     loadAd();
-    return () => {
-      adRef.current = null;
-    };
+    return () => { adRef.current = null; };
   }, []);
 
   const showAd = () => {
     if (!shownRef.current && loadedRef.current && adRef.current) {
       shownRef.current = true;
-      void Promise.resolve(adRef.current.show()).catch((e) => {
+      void Promise.resolve(adRef.current.show()).catch((e: Error) => {
         console.warn("[AdInterstitial] show() failed:", e);
         shownRef.current = false;
       });
