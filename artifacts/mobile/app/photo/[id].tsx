@@ -7,6 +7,7 @@ import { router, useLocalSearchParams, ErrorBoundaryProps } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { captureRef } from "react-native-view-shot";
 import { ErrorBoundary as ScreenBoundary } from "@/components/ErrorBoundary";
 import {
   Alert,
@@ -42,6 +43,8 @@ function PhotoDetailScreenInner() {
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
+  const [whiteBgUri, setWhiteBgUri] = useState<string | null>(null);
+  const whiteBgRef = useRef<View>(null);
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
   const bottomPad = isWeb ? 34 : insets.bottom;
@@ -50,6 +53,16 @@ function PhotoDetailScreenInner() {
   const country = photo ? COUNTRY_FORMATS.find((c) => c.code === photo.countryCode) : null;
 
   const [scoreWidth, setScoreWidth] = useState("0%");
+
+  const captureWhiteBg = useCallback(async () => {
+    if (isWeb || !whiteBgRef.current) return;
+    try {
+      const uri = await captureRef(whiteBgRef, { format: "jpg", quality: 0.97 });
+      setWhiteBgUri(uri);
+    } catch (e) {
+      console.warn("[captureRef] failed:", e);
+    }
+  }, [isWeb]);
 
   useEffect(() => {
     if (photo?.status === "processing") {
@@ -65,7 +78,7 @@ function PhotoDetailScreenInner() {
     }
   }, [photo?.status, photo?.processedUri]);
 
-  const shareUri = photo?.processedUri ?? null;
+  const shareUri = whiteBgUri ?? photo?.processedUri ?? null;
 
   const getLocalUri = async (uri: string): Promise<string> => {
     if (uri.startsWith("file://") || uri.startsWith("/")) return uri;
@@ -211,7 +224,7 @@ function PhotoDetailScreenInner() {
         ) : (
           <>
             <View style={styles.photoFrame}>
-              <View style={styles.whiteBgContainer}>
+              <View style={styles.whiteBgContainer} ref={whiteBgRef} collapsable={false}>
                   <View
                     style={[
                       styles.passportFrame,
@@ -228,6 +241,7 @@ function PhotoDetailScreenInner() {
                         style={styles.photo}
                         contentFit="cover"
                         contentPosition="top center"
+                        onLoadEnd={captureWhiteBg}
                       />
                     ) : (
                       <View style={styles.photoPlaceholder}>
@@ -247,20 +261,20 @@ function PhotoDetailScreenInner() {
               {isDone && (
                 <View style={[
                   styles.bgDoneBadge,
-                  photo?.processedUri === photo?.originalUri && styles.bgDoneBadgeWarn,
+                  !whiteBgUri && styles.bgDoneBadgeWarn,
                 ]}>
-                  {photo?.processedUri !== photo?.originalUri ? (
+                  {whiteBgUri ? (
                     <>
                       <Feather name="check-circle" size={13} color={Colors.success} />
-                      <Text style={styles.bgDoneText}>{t.bgDone}</Text>
+                      <Text style={styles.bgDoneText}>{t.whiteBgReady}</Text>
                     </>
                   ) : (
                     <>
-                      <Feather name="alert-circle" size={13} color={Colors.warning ?? "#F59E0B"} />
+                      <Feather name="loader" size={13} color={Colors.warning ?? "#F59E0B"} />
                       <Text style={[styles.bgDoneText, styles.bgWarnText]}>
                         {lang === "es"
-                          ? "Fondo no procesado · Servidor no disponible"
-                          : "Background not processed · Server unavailable"}
+                          ? "Preparando fondo blanco…"
+                          : "Preparing white background…"}
                       </Text>
                     </>
                   )}
