@@ -7,7 +7,7 @@ import { router, useLocalSearchParams, ErrorBoundaryProps } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorBoundary as ScreenBoundary } from "@/components/ErrorBoundary";
 import {
   Alert,
   Modal,
@@ -1235,8 +1235,8 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 
 export default function PhotoDetailScreen() {
   return (
-    <ErrorBoundary FallbackComponent={PhotoScreenFallback}>
+    <ScreenBoundary FallbackComponent={PhotoScreenFallback}>
       <PhotoDetailScreenInner />
-    </ErrorBoundary>
+    </ScreenBoundary>
   );
 }
