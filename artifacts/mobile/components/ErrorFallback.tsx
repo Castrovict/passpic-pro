@@ -91,10 +91,12 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           style={[
             styles.message,
             {
-              color: theme.textSecondary,
-              fontSize: 11,
-              marginTop: 8,
+              color: "#FF6B6B",
+              fontSize: 13,
+              marginTop: 12,
               fontFamily: Platform.OS === "android" ? "monospace" : "Menlo",
+              textAlign: "left",
+              paddingHorizontal: 8,
             },
           ]}
         >

@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.passpic.pro",
-      "versionCode": 8,
+      "versionCode": 9,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#0A1628"
