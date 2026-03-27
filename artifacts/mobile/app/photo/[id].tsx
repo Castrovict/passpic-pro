@@ -7,6 +7,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
   Alert,
   Modal,
@@ -38,7 +39,7 @@ import { AdBanner } from "@/components/AdBanner";
 import { useInterstitialAd } from "@/components/AdInterstitial";
 import PhotoEditorSheet from "@/components/PhotoEditorSheet";
 
-export default function PhotoDetailScreen() {
+function PhotoDetailScreenInner() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getPhoto, updatePhoto } = usePhotos();
   const { t, lang } = useLang();
@@ -1185,3 +1186,34 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
 });
+
+function PhotoScreenFallback({ resetError }: { error: Error; resetError: () => void }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: Colors.offWhite, alignItems: "center", justifyContent: "center", padding: 32 }}>
+      <Feather name="alert-circle" size={48} color={Colors.muted} style={{ marginBottom: 16 }} />
+      <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 18, color: Colors.navy, textAlign: "center", marginBottom: 8 }}>
+        Algo salió mal
+      </Text>
+      <Text style={{ fontFamily: "Inter_400Regular", fontSize: 14, color: Colors.muted, textAlign: "center", marginBottom: 24 }}>
+        No se pudo mostrar el resultado de la foto.
+      </Text>
+      <Pressable
+        onPress={resetError}
+        style={{ backgroundColor: Colors.cobalt, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
+      >
+        <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 15, color: "#fff" }}>Volver a intentar</Text>
+      </Pressable>
+      <Pressable onPress={() => router.back()} style={{ marginTop: 12 }}>
+        <Text style={{ fontFamily: "Inter_400Regular", fontSize: 14, color: Colors.muted }}>Volver</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+export default function PhotoDetailScreen() {
+  return (
+    <ErrorBoundary FallbackComponent={PhotoScreenFallback}>
+      <PhotoDetailScreenInner />
+    </ErrorBoundary>
+  );
+}

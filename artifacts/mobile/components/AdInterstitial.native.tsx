@@ -63,7 +63,12 @@ export function useInterstitialAd() {
   const showAd = () => {
     if (!shownRef.current && loadedRef.current && adRef.current) {
       shownRef.current = true;
-      adRef.current.show();
+      try {
+        adRef.current.show();
+      } catch (e) {
+        console.warn("[AdInterstitial] show() failed:", e);
+        shownRef.current = false;
+      }
     }
   };
 
