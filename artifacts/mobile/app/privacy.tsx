@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
+import * as Linking from "expo-linking";
 import React from "react";
 import {
   Pressable,
@@ -12,6 +13,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { useLang } from "@/context/LangContext";
+
+export const PRIVACY_POLICY_URL = "https://passpicpro.app/privacy";
 
 // ── Privacy policy content (bilingual) ───────────────────────────────────────
 const POLICY = {
@@ -192,6 +195,19 @@ export default function PrivacyScreen() {
               : "By using PassPic PRO you accept this privacy policy."}
           </Text>
         </View>
+
+        {/* Public URL link */}
+        <View style={styles.urlCard}>
+          <Feather name="globe" size={15} color={Colors.cobalt} />
+          <View style={styles.urlTextWrap}>
+            <Text style={styles.urlLabel}>
+              {lang === "es" ? "Versión web pública:" : "Public web version:"}
+            </Text>
+            <Pressable onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
+              <Text style={styles.urlLink}>{PRIVACY_POLICY_URL}</Text>
+            </Pressable>
+          </View>
+        </View>
       </ScrollView>
     </View>
   );
@@ -268,5 +284,19 @@ const styles = StyleSheet.create({
   footerText: {
     flex: 1, fontFamily: "Inter_400Regular", fontSize: 13,
     color: Colors.navy, lineHeight: 19,
+  },
+  urlCard: {
+    flexDirection: "row", alignItems: "flex-start", gap: 10,
+    backgroundColor: Colors.cobalt + "0F", borderRadius: 12, padding: 14,
+    marginTop: 10, marginBottom: 8,
+    borderWidth: 1, borderColor: Colors.cobalt + "20",
+  },
+  urlTextWrap: { flex: 1 },
+  urlLabel: {
+    fontFamily: "Inter_500Medium", fontSize: 12, color: Colors.muted, marginBottom: 3,
+  },
+  urlLink: {
+    fontFamily: "Inter_400Regular", fontSize: 13, color: Colors.cobalt,
+    textDecorationLine: "underline",
   },
 });
