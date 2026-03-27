@@ -241,7 +241,6 @@ function PhotoDetailScreenInner() {
                       <View style={styles.frameBR} />
                     </View>
                   </View>
-                </View>
               </View>
 
               {/* Background removal status badge */}
