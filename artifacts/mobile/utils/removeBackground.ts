@@ -1,22 +1,39 @@
 import * as FileSystem from "expo-file-system/legacy";
 import { Platform } from "react-native";
 
-const REMOVE_BG_KEY = process.env.EXPO_PUBLIC_REMOVE_BG_KEY ?? "";
-const API_DOMAIN = process.env.EXPO_PUBLIC_DOMAIN ?? "";
+/**
+ * The API server URL for background removal.
+ * Priority:
+ *  1. EXPO_PUBLIC_DOMAIN env var (set in dev workflow and EAS builds)
+ *  2. EXPO_PUBLIC_API_BASE hardcoded constant (set after deployment)
+ *
+ * The API server uses @imgly/background-removal-node — free, fully local ML,
+ * no third-party API key needed. First run downloads the ONNX model (~80 MB).
+ */
+const DEPLOYED_API_BASE = process.env.EXPO_PUBLIC_API_BASE ?? "";
+const DEV_DOMAIN = process.env.EXPO_PUBLIC_DOMAIN ?? "";
+
+function getApiBase(): string {
+  if (DEV_DOMAIN) return `https://${DEV_DOMAIN}`;
+  if (DEPLOYED_API_BASE) return DEPLOYED_API_BASE;
+  return "";
+}
 
 export type RemoveBgResult =
   | { success: true; uri: string }
   | { success: false; reason: string };
 
 /**
- * Removes background and applies white background using remove.bg.
- * Strategy:
- *  1. If EXPO_PUBLIC_REMOVE_BG_KEY is set → call remove.bg directly
- *  2. Else → proxy through the API server (uses server-side REMOVE_BG_API_KEY)
- *  3. If both fail → return { success: false }
- * Always returns image/jpeg with #ffffff background.
+ * Removes background from a portrait photo and returns white-background JPEG.
+ * Uses the self-hosted API server with local ML (free, no API key needed).
  */
 export async function removeBackground(sourceUri: string): Promise<RemoveBgResult> {
+  const apiBase = getApiBase();
+  if (!apiBase) {
+    console.warn("[removeBackground] No API base URL configured");
+    return { success: false, reason: "no_api_url" };
+  }
+
   try {
     let base64: string;
 
@@ -28,58 +45,9 @@ export async function removeBackground(sourceUri: string): Promise<RemoveBgResul
       });
     }
 
-    // Try direct remove.bg if key is available
-    if (REMOVE_BG_KEY) {
-      const result = await callRemoveBgDirect(base64);
-      if (result.success) return result;
-      console.warn("[removeBackground] direct call failed, trying server proxy...");
-    }
+    const url = `${apiBase}/api/remove-bg`;
+    console.log("[removeBackground] calling:", url);
 
-    // Try via API server proxy
-    if (API_DOMAIN) {
-      const result = await callRemoveBgViaServer(base64);
-      if (result.success) return result;
-    }
-
-    return { success: false, reason: "no_key_or_server" };
-  } catch (e: any) {
-    console.warn("[removeBackground] exception:", e?.message ?? e);
-    return { success: false, reason: e?.message ?? "unknown" };
-  }
-}
-
-async function callRemoveBgDirect(base64: string): Promise<RemoveBgResult> {
-  try {
-    const body = new FormData();
-    body.append("image_file_b64", base64);
-    body.append("size", "auto");
-    body.append("type", "person");
-    body.append("bg_color", "ffffff");
-    body.append("format", "jpg");
-
-    const res = await fetch("https://api.remove.bg/v1.0/removebg", {
-      method: "POST",
-      headers: { "X-Api-Key": REMOVE_BG_KEY },
-      body,
-    });
-
-    if (!res.ok) {
-      const err = await res.text().catch(() => res.status.toString());
-      console.warn("[removeBackground] direct error:", err);
-      return { success: false, reason: err };
-    }
-
-    const resultBlob = await res.blob();
-    const base64Result = await blobToBase64(resultBlob);
-    return await saveBase64ToFile(base64Result);
-  } catch (e: any) {
-    return { success: false, reason: e?.message ?? "direct_exception" };
-  }
-}
-
-async function callRemoveBgViaServer(base64: string): Promise<RemoveBgResult> {
-  try {
-    const url = `https://${API_DOMAIN}/api/remove-bg`;
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -99,8 +67,8 @@ async function callRemoveBgViaServer(base64: string): Promise<RemoveBgResult> {
 
     return await saveBase64ToFile(data.image_base64);
   } catch (e: any) {
-    console.warn("[removeBackground] server exception:", e?.message ?? e);
-    return { success: false, reason: e?.message ?? "server_exception" };
+    console.warn("[removeBackground] exception:", e?.message ?? e);
+    return { success: false, reason: e?.message ?? "unknown" };
   }
 }
 
@@ -134,7 +102,7 @@ async function fetchToBase64Web(uri: string): Promise<string> {
   return blobToBase64(blob);
 }
 
-/** True if any remove.bg path is available (direct key or server) */
+/** True if the API server URL is configured */
 export function hasRemoveBgKey(): boolean {
-  return !!(REMOVE_BG_KEY || API_DOMAIN);
+  return !!getApiBase();
 }

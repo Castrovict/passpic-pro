@@ -5,11 +5,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as MediaLibrary from "expo-media-library";
 import { router, useLocalSearchParams, ErrorBoundaryProps } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
-import * as ImageManipulator from "expo-image-manipulator";
 import * as Sharing from "expo-sharing";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { WebView } from "react-native-webview";
-import type { WebViewMessageEvent } from "react-native-webview";
+import React, { useCallback, useEffect, useState } from "react";
 import { ErrorBoundary as ScreenBoundary } from "@/components/ErrorBoundary";
 import {
   Alert,
@@ -45,9 +42,6 @@ function PhotoDetailScreenInner() {
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
-  const [whiteBgUri, setWhiteBgUri] = useState<string | null>(null);
-  const [compositorHtml, setCompositorHtml] = useState<string | null>(null);
-  const compositorRef = useRef<WebView>(null);
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
   const bottomPad = isWeb ? 34 : insets.bottom;
@@ -56,67 +50,6 @@ function PhotoDetailScreenInner() {
   const country = photo ? COUNTRY_FORMATS.find((c) => c.code === photo.countryCode) : null;
 
   const [scoreWidth, setScoreWidth] = useState("0%");
-
-  const buildCompositor = useCallback(async (photoUri: string, widthMm: number, heightMm: number) => {
-    if (isWeb) return;
-    try {
-      let workUri = photoUri;
-      const info = await FileSystem.getInfoAsync(photoUri);
-      if (info.exists && (info as any).size > 2_000_000) {
-        const resized = await ImageManipulator.manipulateAsync(
-          photoUri,
-          [{ resize: { width: 1000 } }],
-          { compress: 0.88, format: ImageManipulator.SaveFormat.JPEG }
-        );
-        workUri = resized.uri;
-      }
-      const b64 = await FileSystem.readAsStringAsync(workUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      const ext = photoUri.toLowerCase().endsWith(".png") ? "png" : "jpeg";
-      const cw = 400;
-      const ch = Math.round(cw * (heightMm / widthMm));
-      const html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{margin:0;padding:0;}body{background:#fff;overflow:hidden;}</style></head><body>
-<canvas id="c" width="${cw}" height="${ch}"></canvas>
-<script>
-var img=new Image();
-img.onload=function(){
-  var c=document.getElementById('c');
-  var ctx=c.getContext('2d');
-  ctx.fillStyle='#ffffff';
-  ctx.fillRect(0,0,c.width,c.height);
-  ctx.drawImage(img,0,0,c.width,c.height);
-  window.ReactNativeWebView.postMessage(JSON.stringify({type:'WHITEBG',data:c.toDataURL('image/jpeg',0.92)}));
-};
-img.onerror=function(){window.ReactNativeWebView.postMessage(JSON.stringify({type:'ERROR'}));};
-img.src='data:image/${ext};base64,${b64}';
-</script></body></html>`;
-      setCompositorHtml(html);
-    } catch (e) {
-      console.warn("[compositor] build failed:", e);
-    }
-  }, [isWeb]);
-
-  const handleCompositorMessage = useCallback(async (event: WebViewMessageEvent) => {
-    try {
-      const msg = JSON.parse(event.nativeEvent.data);
-      if (msg.type === "WHITEBG" && msg.data) {
-        const raw = (msg.data as string).replace(/^data:image\/\w+;base64,/, "");
-        const dest = `${FileSystem.cacheDirectory}whitebg_${Date.now()}.jpg`;
-        await FileSystem.writeAsStringAsync(dest, raw, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        setWhiteBgUri(dest);
-        setCompositorHtml(null);
-      } else if (msg.type === "ERROR") {
-        console.warn("[compositor] canvas error");
-        setCompositorHtml(null);
-      }
-    } catch (e) {
-      console.warn("[compositor] message failed:", e);
-      setCompositorHtml(null);
-    }
-  }, []);
 
   useEffect(() => {
     if (photo?.status === "processing") {
@@ -129,14 +62,10 @@ img.src='data:image/${ext};base64,${b64}';
       const pct = Math.round(photo.validationResults?.score ?? 0);
       setScoreWidth(pct + "%");
       setTimeout(showAd, 2000);
-      setWhiteBgUri(null);
-      const wMm = country?.widthMm ?? 35;
-      const hMm = country?.heightMm ?? 45;
-      buildCompositor(photo.processedUri, wMm, hMm);
     }
   }, [photo?.status, photo?.processedUri]);
 
-  const shareUri = whiteBgUri ?? photo?.processedUri ?? null;
+  const shareUri = photo?.processedUri ?? null;
 
   const getLocalUri = async (uri: string): Promise<string> => {
     if (uri.startsWith("file://") || uri.startsWith("/")) return uri;
@@ -209,11 +138,10 @@ img.src='data:image/${ext};base64,${b64}';
   };
 
   const handleEditorApply = useCallback(
-    async (newUri: string) => {
+    (newUri: string) => {
       setShowEditor(false);
       if (!id || !photo) return;
       updatePhoto(id as string, { processedUri: newUri });
-      setWhiteBgUri(null);
     },
     [id, photo, updatePhoto]
   );
@@ -314,27 +242,11 @@ img.src='data:image/${ext};base64,${b64}';
                   </View>
               </View>
 
-              {/* Background removal status badge */}
+              {/* White background status badge */}
               {isDone && (
-                <View style={[
-                  styles.bgDoneBadge,
-                  !whiteBgUri && styles.bgDoneBadgeWarn,
-                ]}>
-                  {whiteBgUri ? (
-                    <>
-                      <Feather name="check-circle" size={13} color={Colors.success} />
-                      <Text style={styles.bgDoneText}>{t.whiteBgReady}</Text>
-                    </>
-                  ) : (
-                    <>
-                      <Feather name="loader" size={13} color={Colors.warning ?? "#F59E0B"} />
-                      <Text style={[styles.bgDoneText, styles.bgWarnText]}>
-                        {lang === "es"
-                          ? "Preparando fondo blanco…"
-                          : "Preparing white background…"}
-                      </Text>
-                    </>
-                  )}
+                <View style={styles.bgDoneBadge}>
+                  <Feather name="check-circle" size={13} color={Colors.success} />
+                  <Text style={styles.bgDoneText}>{t.whiteBgReady}</Text>
                 </View>
               )}
 
@@ -614,25 +526,6 @@ img.src='data:image/${ext};base64,${b64}';
         />
       )}
 
-      {/* ── WebView compositor: nearly-transparent overlay, draws photo on white canvas ── */}
-      {compositorHtml && !isWeb && (
-        <View
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        >
-          <WebView
-            ref={compositorRef}
-            source={{ html: compositorHtml }}
-            style={{ flex: 1, opacity: 0.02 }}
-            onMessage={handleCompositorMessage}
-            javaScriptEnabled
-            scrollEnabled={false}
-            originWhitelist={["*"]}
-            allowFileAccess
-            allowUniversalAccessFromFileURLs
-          />
-        </View>
-      )}
     </View>
   );
 }
