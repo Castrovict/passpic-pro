@@ -11,7 +11,6 @@ import {
   Text,
   View,
 } from "react-native";
-import Animated, { FadeIn, FadeInDown, SlideInDown } from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import { useLang } from "@/context/LangContext";
 
@@ -116,16 +115,16 @@ export function ConsentModal() {
       onRequestClose={() => {}}
     >
       {/* Backdrop */}
-      <Animated.View entering={FadeIn.duration(300)} style={styles.backdrop}>
+      <View style={styles.backdrop}>
         <LinearGradient
           colors={["rgba(10,22,40,0.88)", "rgba(10,22,40,0.96)"]}
           style={StyleSheet.absoluteFill}
         />
-      </Animated.View>
+      </View>
 
       {/* Sheet */}
       <View style={styles.sheetWrap} pointerEvents="box-none">
-        <Animated.View entering={SlideInDown.springify().damping(22)} style={styles.sheet}>
+        <View style={styles.sheet}>
           {/* Header stripe */}
           <LinearGradient
             colors={[Colors.cobalt, Colors.cobaltDark]}
@@ -146,9 +145,8 @@ export function ConsentModal() {
           >
             {/* Permission points */}
             {c.points.map((point, i) => (
-              <Animated.View
+              <View
                 key={point.heading}
-                entering={FadeInDown.delay(100 + i * 70).springify()}
                 style={styles.pointRow}
               >
                 <View style={styles.pointIcon}>
@@ -158,7 +156,7 @@ export function ConsentModal() {
                   <Text style={styles.pointHeading}>{point.heading}</Text>
                   <Text style={styles.pointBody}>{point.body}</Text>
                 </View>
-              </Animated.View>
+              </View>
             ))}
 
             {/* Privacy policy link */}
@@ -189,10 +187,10 @@ export function ConsentModal() {
             </Pressable>
 
             {showError && (
-              <Animated.View entering={FadeIn.duration(200)} style={styles.errorRow}>
+              <View style={styles.errorRow}>
                 <Feather name="alert-circle" size={13} color={Colors.error} />
                 <Text style={styles.errorText}>{c.required}</Text>
-              </Animated.View>
+              </View>
             )}
           </ScrollView>
 
@@ -216,7 +214,7 @@ export function ConsentModal() {
               </LinearGradient>
             </Pressable>
           </View>
-        </Animated.View>
+        </View>
       </View>
     </Modal>
   );

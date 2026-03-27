@@ -13,7 +13,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { COUNTRY_FORMATS, CountryFormat } from "@/constants/countries";
@@ -120,7 +119,7 @@ export default function CountrySelectorScreen() {
         colors={[Colors.navy, Colors.navyLight ?? "#0D2045"]}
         style={[styles.headerGrad, { paddingTop: topPad + 8 }]}
       >
-        <Animated.View entering={FadeIn.delay(60)} style={styles.headerRow}>
+        <View style={styles.headerRow}>
           <View>
             <Text style={styles.headerTitle}>{t.selectCountry}</Text>
             <Text style={styles.headerSub}>
@@ -134,10 +133,10 @@ export default function CountrySelectorScreen() {
           >
             <Feather name="x" size={20} color="rgba(255,255,255,0.9)" />
           </Pressable>
-        </Animated.View>
+        </View>
 
         {/* Search bar */}
-        <Animated.View entering={FadeIn.delay(100)} style={styles.searchWrap}>
+        <View style={styles.searchWrap}>
           <Feather name="search" size={15} color="rgba(255,255,255,0.6)" />
           <TextInput
             value={search}
@@ -153,11 +152,11 @@ export default function CountrySelectorScreen() {
               <Feather name="x-circle" size={15} color="rgba(255,255,255,0.5)" />
             </Pressable>
           )}
-        </Animated.View>
+        </View>
 
         {/* Region filter chips */}
         {!search && (
-          <Animated.View entering={FadeIn.delay(140)}>
+          <View>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -178,7 +177,7 @@ export default function CountrySelectorScreen() {
                 );
               })}
             </ScrollView>
-          </Animated.View>
+          </View>
         )}
       </LinearGradient>
 
@@ -202,10 +201,10 @@ export default function CountrySelectorScreen() {
           </View>
         }
         renderSectionHeader={({ section }) => (
-          <Animated.View entering={FadeInDown.springify()} style={styles.sectionHeader}>
+          <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleBar} />
             <Text style={styles.sectionTitle}>{section.title}</Text>
-          </Animated.View>
+          </View>
         )}
         renderItem={({ item: row }) => (
           <View style={styles.gridRow}>

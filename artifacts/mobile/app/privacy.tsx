@@ -9,7 +9,6 @@ import {
   Text,
   View,
 } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { useLang } from "@/context/LangContext";
@@ -148,7 +147,7 @@ export default function PrivacyScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header card */}
-        <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.headerCard}>
+        <View style={styles.headerCard}>
           <View style={styles.shieldRow}>
             <View style={styles.shieldIcon}>
               <Feather name="shield" size={28} color={Colors.cobalt} />
@@ -171,29 +170,28 @@ export default function PrivacyScreen() {
               </View>
             ))}
           </View>
-        </Animated.View>
+        </View>
 
         {/* Policy sections */}
         {policy.sections.map((section, i) => (
-          <Animated.View
+          <View
             key={section.heading}
-            entering={FadeInDown.delay(80 + i * 40).springify()}
             style={styles.sectionCard}
           >
             <Text style={styles.sectionHeading}>{section.heading}</Text>
             <Text style={styles.sectionBody}>{section.body}</Text>
-          </Animated.View>
+          </View>
         ))}
 
         {/* Footer */}
-        <Animated.View entering={FadeInDown.delay(600).springify()} style={styles.footer}>
+        <View style={styles.footer}>
           <Feather name="check-circle" size={16} color={Colors.success} />
           <Text style={styles.footerText}>
             {lang === "es"
               ? "Al usar PassPic PRO aceptas esta política de privacidad."
               : "By using PassPic PRO you accept this privacy policy."}
           </Text>
-        </Animated.View>
+        </View>
       </ScrollView>
     </View>
   );

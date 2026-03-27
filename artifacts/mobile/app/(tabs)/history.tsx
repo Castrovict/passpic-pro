@@ -12,7 +12,6 @@ import {
   Text,
   View,
 } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { usePhotos } from "@/context/PhotoContext";
@@ -60,7 +59,7 @@ export default function HistoryScreen() {
           { paddingTop: topPad + 12, paddingBottom: isWeb ? 120 : 100 },
         ]}
         ListHeaderComponent={
-          <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.header}>
+          <View style={styles.header}>
             <View>
               <Text style={styles.title}>{t.myPhotosTitle}</Text>
               <Text style={styles.subtitle}>
@@ -74,10 +73,10 @@ export default function HistoryScreen() {
                 <Text style={styles.countText}>{photos.length}</Text>
               </View>
             )}
-          </Animated.View>
+          </View>
         }
         ListEmptyComponent={
-          <Animated.View entering={FadeInDown.delay(150).springify()} style={styles.emptyState}>
+          <View style={styles.emptyState}>
             <View style={styles.emptyIconWrap}>
               <Feather name="image" size={36} color={Colors.muted} />
             </View>
@@ -89,12 +88,12 @@ export default function HistoryScreen() {
               style={styles.emptyBtn}
               icon={<Feather name="camera" size={16} color={Colors.white} />}
             />
-          </Animated.View>
+          </View>
         }
         renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(100 + index * 60).springify()}>
+          <View>
             <PhotoHistoryCard photo={item} onDelete={handleDelete} />
-          </Animated.View>
+          </View>
         )}
         showsVerticalScrollIndicator={false}
       />

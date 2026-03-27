@@ -6,6 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Modal,
   Platform,
   Pressable,
@@ -13,13 +14,6 @@ import {
   Text,
   View,
 } from "react-native";
-import Animated, {
-  FadeIn,
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withTiming,
-} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 
@@ -49,16 +43,9 @@ export function CameraModal({
   const cameraRef = useRef<CameraView>(null);
   const isTakingRef = useRef(false);
 
-  // ── Animations ──────────────────────────────────────────────────────────
-  const shutterScale = useSharedValue(1);
-  const flashOpacity = useSharedValue(0);
-
-  const shutterStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: shutterScale.value }],
-  }));
-  const flashStyle = useAnimatedStyle(() => ({
-    opacity: flashOpacity.value,
-  }));
+  // ── Animations (React Native built-in Animated) ──────────────────────────
+  const shutterScale = useRef(new Animated.Value(1)).current;
+  const flashOpacity = useRef(new Animated.Value(0)).current;
 
   // ── Camera actions ───────────────────────────────────────────────────────
   const flipCamera = () => {
@@ -77,14 +64,16 @@ export function CameraModal({
     setIsTaking(true);
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    shutterScale.value = withSequence(
-      withTiming(0.88, { duration: 80 }),
-      withTiming(1, { duration: 120 })
-    );
-    flashOpacity.value = withSequence(
-      withTiming(0.6, { duration: 60 }),
-      withTiming(0, { duration: 200 })
-    );
+
+    Animated.sequence([
+      Animated.timing(shutterScale, { toValue: 0.88, duration: 80, useNativeDriver: true }),
+      Animated.timing(shutterScale, { toValue: 1, duration: 120, useNativeDriver: true }),
+    ]).start();
+
+    Animated.sequence([
+      Animated.timing(flashOpacity, { toValue: 0.6, duration: 60, useNativeDriver: true }),
+      Animated.timing(flashOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start();
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
@@ -166,28 +155,31 @@ export function CameraModal({
           flash={flash}
         />
 
-        {/* Flash white overlay (only on real capture) */}
-        <Animated.View style={[StyleSheet.absoluteFill, styles.flashOverlay, flashStyle]} pointerEvents="none" />
+        {/* Flash white overlay */}
+        <Animated.View
+          style={[StyleSheet.absoluteFill, styles.flashOverlay, { opacity: flashOpacity }]}
+          pointerEvents="none"
+        />
 
         {/* Top bar */}
         <LinearGradient
           colors={["rgba(0,0,0,0.55)", "transparent"]}
           style={[styles.topBar, { paddingTop: topPad + 12 }]}
         >
-          <Animated.View entering={FadeIn.delay(100)}>
+          <View>
             <Pressable onPress={onClose} style={styles.iconBtn}>
               <Feather name="x" size={24} color={Colors.white} />
             </Pressable>
-          </Animated.View>
+          </View>
 
-          <Animated.View entering={FadeIn.delay(150)} style={styles.facingBadge}>
+          <View style={styles.facingBadge}>
             <Feather name={facing === "front" ? "user" : "camera"} size={13} color={Colors.white} />
             <Text style={styles.facingText}>
               {facing === "front" ? "Cámara delantera" : "Cámara trasera"}
             </Text>
-          </Animated.View>
+          </View>
 
-          <Animated.View entering={FadeIn.delay(200)}>
+          <View>
             <Pressable onPress={toggleFlash} style={styles.iconBtn}>
               <Feather
                 name={flash === "on" ? "zap" : "zap-off"}
@@ -195,7 +187,7 @@ export function CameraModal({
                 color={flash === "on" ? Colors.gold : Colors.white}
               />
             </Pressable>
-          </Animated.View>
+          </View>
         </LinearGradient>
 
         {/* ICAO face guide overlay */}
@@ -238,7 +230,7 @@ export function CameraModal({
           </Pressable>
 
           <Pressable onPress={takePhoto} disabled={isTaking} hitSlop={8}>
-            <Animated.View style={[styles.shutterOuter, shutterStyle]}>
+            <Animated.View style={[styles.shutterOuter, { transform: [{ scale: shutterScale }] }]}>
               <View style={styles.shutterInner}>
                 {isTaking ? (
                   <ActivityIndicator color={Colors.navy} size="small" />
@@ -259,7 +251,7 @@ export function CameraModal({
   );
 }
 
-// ── Static checklist — always visible, no periodic snapshots ─────────────────
+// ── Static checklist — always visible ────────────────────────────────────────
 function StaticChecklist() {
   const tips = [
     { id: "face",   label: "Rostro visible" },
@@ -269,14 +261,14 @@ function StaticChecklist() {
   ];
 
   return (
-    <Animated.View entering={FadeIn.delay(300)} style={styles.checklist}>
+    <View style={styles.checklist}>
       {tips.map((t) => (
         <View key={t.id} style={styles.checkRow}>
           <Feather name="circle" size={12} color="rgba(255,255,255,0.55)" />
           <Text style={styles.checkLabel}>{t.label}</Text>
         </View>
       ))}
-    </Animated.View>
+    </View>
   );
 }
 

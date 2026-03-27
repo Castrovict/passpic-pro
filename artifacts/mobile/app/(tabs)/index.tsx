@@ -14,11 +14,6 @@ import {
   Text,
   View,
 } from "react-native";
-import Animated, {
-  FadeIn,
-  FadeInDown,
-  FadeInUp,
-} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { COUNTRY_FORMATS, POPULAR_COUNTRIES } from "@/constants/countries";
@@ -147,7 +142,7 @@ export default function CameraScreen() {
         contentContainerStyle={[styles.scroll, { paddingTop: topPad + 8 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.header}>
+        <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Image
               source={require("@/assets/images/icon.png")}
@@ -170,9 +165,9 @@ export default function CameraScreen() {
               <Text style={styles.proText}>PRO</Text>
             </View>
           </View>
-        </Animated.View>
+        </View>
 
-        <Animated.View entering={FadeInDown.delay(150).springify()} style={styles.heroCard}>
+        <View style={styles.heroCard}>
           {/* Passport card mockup with app icon */}
           <View style={styles.passportMock}>
             {/* Passport top strip */}
@@ -225,9 +220,9 @@ export default function CameraScreen() {
               );
             })}
           </View>
-        </Animated.View>
+        </View>
 
-        <Animated.View entering={FadeInDown.delay(250).springify()} style={styles.section}>
+        <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>{t.countryFormat}</Text>
             <Pressable
@@ -256,9 +251,9 @@ export default function CameraScreen() {
               />
             ))}
           </ScrollView>
-        </Animated.View>
+        </View>
 
-        <Animated.View entering={FadeInDown.delay(350).springify()} style={styles.selectedInfo}>
+        <View style={styles.selectedInfo}>
           <Text style={styles.selectedFlag}>{selectedCountry.flag}</Text>
           <View style={styles.selectedDetails}>
             <Text style={styles.selectedName}>{selectedCountry.name}</Text>
@@ -267,9 +262,9 @@ export default function CameraScreen() {
             </Text>
             <Text style={styles.selectedNote}>{selectedCountry.notes}</Text>
           </View>
-        </Animated.View>
+        </View>
 
-        <Animated.View entering={FadeInUp.delay(400).springify()} style={styles.actions}>
+        <View style={styles.actions}>
           {/* Selector cámara delantera / trasera */}
           <View style={styles.cameraToggleRow}>
             <Text style={styles.cameraToggleLabel}>{t.camera}:</Text>
@@ -356,9 +351,9 @@ export default function CameraScreen() {
             <Feather name="image" size={22} color={Colors.cobalt} />
             <Text style={styles.galleryBtnText}>{t.uploadGallery}</Text>
           </Pressable>
-        </Animated.View>
+        </View>
 
-        <Animated.View entering={FadeIn.delay(500)} style={styles.tips}>
+        <View style={styles.tips}>
           <Text style={styles.tipsTitle}>{t.tips}</Text>
           <View style={styles.tipsList}>
             {t.tipsList.map((tip, i) => (
@@ -370,7 +365,7 @@ export default function CameraScreen() {
               </View>
             ))}
           </View>
-        </Animated.View>
+        </View>
 
         {/* Privacy footer link */}
         <Pressable

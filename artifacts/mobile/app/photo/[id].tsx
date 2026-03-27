@@ -18,7 +18,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { captureRef } from "react-native-view-shot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { COUNTRY_FORMATS } from "@/constants/countries";
@@ -39,15 +38,10 @@ function PhotoDetailScreenInner() {
   const insets = useSafeAreaInsets();
   const { showAd } = useInterstitialAd();
   const [processingStep, setProcessingStep] = useState(0);
-  const [whiteBgUri, setWhiteBgUri] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
-  const whiteBgRef = useRef<View>(null);
-  // White background compositor
-  const compositorRef = useRef<View>(null);
-  const lastCompositedUri = useRef<string | null>(null);
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
   const bottomPad = isWeb ? 34 : insets.bottom;
@@ -56,38 +50,6 @@ function PhotoDetailScreenInner() {
   const country = photo ? COUNTRY_FORMATS.find((c) => c.code === photo.countryCode) : null;
 
   const [scoreWidth, setScoreWidth] = useState("0%");
-
-  const captureWhiteBg = useCallback(async () => {
-    if (isWeb || !whiteBgRef.current) return;
-    try {
-      const uri = await captureRef(whiteBgRef, { format: "jpg", quality: 0.97 });
-      setWhiteBgUri(uri);
-    } catch (e) {
-      console.warn("[captureRef] capture failed:", e);
-    }
-  }, [isWeb]);
-
-  /**
-   * Hidden white-background compositor.
-   * Captures the processedUri on a pure white 600×800 canvas and saves it back
-   * as the new processedUri. This guarantees that the final stored image always
-   * has a #ffffff background — either from AI removal (transparent areas → white)
-   * or as a JPEG wrapper for the original photo.
-   * Guard: lastCompositedUri prevents infinite re-triggering.
-   */
-  const handleCompositorLoad = useCallback(async () => {
-    if (isWeb || !compositorRef.current) return;
-    const currentUri = photo?.processedUri ?? null;
-    if (!currentUri || currentUri === lastCompositedUri.current) return;
-    try {
-      const uri = await captureRef(compositorRef, { format: "jpg", quality: 0.97 });
-      lastCompositedUri.current = uri;
-      updatePhoto(id as string, { processedUri: uri });
-    } catch (e) {
-      console.warn("[compositor] white bg failed:", e);
-      lastCompositedUri.current = currentUri; // prevent retry on error
-    }
-  }, [isWeb, photo?.processedUri, id, updatePhoto]);
 
   useEffect(() => {
     if (photo?.status === "processing") {
@@ -99,12 +61,11 @@ function PhotoDetailScreenInner() {
     if (photo?.status === "done" && photo.processedUri) {
       const pct = Math.round(photo.validationResults?.score ?? 0);
       setScoreWidth(pct + "%");
-      setTimeout(captureWhiteBg, 1200);
       setTimeout(showAd, 2000);
     }
   }, [photo?.status, photo?.processedUri]);
 
-  const shareUri = whiteBgUri ?? photo?.processedUri ?? null;
+  const shareUri = photo?.processedUri ?? null;
 
   const getLocalUri = async (uri: string): Promise<string> => {
     if (uri.startsWith("file://") || uri.startsWith("/")) return uri;
@@ -211,26 +172,6 @@ function PhotoDetailScreenInner() {
   return (
     <View style={[styles.container, { paddingBottom: bottomPad }]}>
 
-      {/* ─── Hidden white-background compositor ─────────────────────────────
-          Renders the processedUri on a white 600×800 canvas off-screen.
-          captureRef on compositorRef produces a JPEG with guaranteed white bg.
-          lastCompositedUri guard prevents infinite re-triggering.
-          ─────────────────────────────────────────────────────────────────── */}
-      {!isWeb && photo?.status === "done" && photo?.processedUri &&
-        photo.processedUri !== lastCompositedUri.current && (
-        <View style={styles.compositorWrap}>
-          <View ref={compositorRef} style={styles.compositor} collapsable={false}>
-            <Image
-              source={{ uri: photo.processedUri }}
-              style={StyleSheet.absoluteFill}
-              contentFit="contain"
-              contentPosition="top center"
-              onLoadEnd={handleCompositorLoad}
-            />
-          </View>
-        </View>
-      )}
-
       <LinearGradient
         colors={[Colors.navy, Colors.navyMid]}
         style={styles.headerGradient}
@@ -270,8 +211,7 @@ function PhotoDetailScreenInner() {
         ) : (
           <>
             <View style={styles.photoFrame}>
-              <View style={styles.viewShotWrap}>
-                <View ref={whiteBgRef} style={styles.whiteBgContainer} collapsable={false}>
+              <View style={styles.whiteBgContainer}>
                   <View
                     style={[
                       styles.passportFrame,
@@ -288,7 +228,6 @@ function PhotoDetailScreenInner() {
                         style={styles.photo}
                         contentFit="cover"
                         contentPosition="top center"
-                        onLoadEnd={captureWhiteBg}
                       />
                     ) : (
                       <View style={styles.photoPlaceholder}>
@@ -309,27 +248,20 @@ function PhotoDetailScreenInner() {
               {isDone && (
                 <View style={[
                   styles.bgDoneBadge,
-                  !whiteBgUri && styles.bgDoneBadgeWarn,
+                  photo?.processedUri === photo?.originalUri && styles.bgDoneBadgeWarn,
                 ]}>
-                  {whiteBgUri ? (
+                  {photo?.processedUri !== photo?.originalUri ? (
                     <>
                       <Feather name="check-circle" size={13} color={Colors.success} />
                       <Text style={styles.bgDoneText}>{t.bgDone}</Text>
                     </>
-                  ) : photo?.processedUri === photo?.originalUri ? (
+                  ) : (
                     <>
                       <Feather name="alert-circle" size={13} color={Colors.warning ?? "#F59E0B"} />
                       <Text style={[styles.bgDoneText, styles.bgWarnText]}>
                         {lang === "es"
                           ? "Fondo no procesado · Servidor no disponible"
                           : "Background not processed · Server unavailable"}
-                      </Text>
-                    </>
-                  ) : (
-                    <>
-                      <Feather name="loader" size={13} color={Colors.primary} />
-                      <Text style={styles.bgDoneText}>
-                        {lang === "es" ? "Preparando fondo blanco…" : "Preparing white bg…"}
                       </Text>
                     </>
                   )}
@@ -620,17 +552,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.offWhite,
   },
-  // Hidden off-screen white background compositor (600×800 passport-sized canvas)
-  compositorWrap: {
-    position: "absolute",
-    top: -1600,
-    left: 0,
-  },
-  compositor: {
-    width: 600,
-    height: 800,
-    backgroundColor: "#ffffff",
-  },
   headerGradient: {
     position: "absolute",
     top: 0,
@@ -685,10 +606,6 @@ const styles = StyleSheet.create({
   photoFrame: {
     alignItems: "center",
     marginBottom: 20,
-  },
-  viewShotWrap: {
-    alignItems: "center",
-    width: "100%",
   },
   whiteBgContainer: {
     backgroundColor: "#FFFFFF",

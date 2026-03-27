@@ -11,14 +11,6 @@ import {
   Text,
   View,
 } from "react-native";
-import Animated, {
-  FadeIn,
-  FadeInDown,
-  FadeInUp,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 
@@ -68,10 +60,6 @@ export function PermissionsGate({ onGranted }: PermissionsGateProps) {
   const [allGranted, setAllGranted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const checkScale = useSharedValue(1);
-  const checkStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: checkScale.value }],
-  }));
 
   useEffect(() => {
     checkExistingPermissions();
@@ -131,8 +119,6 @@ export function PermissionsGate({ onGranted }: PermissionsGateProps) {
         const allDone = updated.filter((p) => p.required).every((p) => p.granted);
         if (allDone) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          checkScale.value = withSpring(1.15, { damping: 8 }, () => {
-            checkScale.value = withSpring(1);
           });
           setAllGranted(true);
           setTimeout(onGranted, 800);
@@ -169,7 +155,7 @@ export function PermissionsGate({ onGranted }: PermissionsGateProps) {
         style={StyleSheet.absoluteFill}
       />
 
-      <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.top}>
+      <View style={styles.top}>
         <View style={styles.iconWrap}>
           <Feather name="shield" size={36} color={Colors.white} />
         </View>
@@ -178,13 +164,12 @@ export function PermissionsGate({ onGranted }: PermissionsGateProps) {
           PassPic PRO necesita los siguientes permisos para funcionar correctamente.
           Tu privacidad está protegida — nunca compartimos tus fotos.
         </Text>
-      </Animated.View>
+      </View>
 
       <View style={styles.permList}>
         {permissions.map((perm, i) => (
-          <Animated.View
+          <View
             key={perm.key}
-            entering={FadeInDown.delay(200 + i * 120).springify()}
           >
             <Pressable
               onPress={() => !perm.granted && !perm.checking && requestPermission(perm.key)}
@@ -223,9 +208,9 @@ export function PermissionsGate({ onGranted }: PermissionsGateProps) {
                 {perm.checking ? (
                   <ActivityIndicator color={Colors.cobalt} size="small" />
                 ) : perm.granted ? (
-                  <Animated.View style={[styles.grantedBadge, checkStyle]}>
+                  <View style={styles.grantedBadge}>
                     <Feather name="check" size={14} color={Colors.white} />
-                  </Animated.View>
+                  </View>
                 ) : (
                   <View style={styles.pendingBadge}>
                     <Feather name="chevron-right" size={16} color={Colors.cobalt} />
@@ -233,11 +218,11 @@ export function PermissionsGate({ onGranted }: PermissionsGateProps) {
                 )}
               </View>
             </Pressable>
-          </Animated.View>
+          </View>
         ))}
       </View>
 
-      <Animated.View entering={FadeInUp.delay(500).springify()} style={styles.bottom}>
+      <View style={styles.bottom}>
         {allGranted ? (
           <View style={styles.allGrantedRow}>
             <Feather name="check-circle" size={20} color={Colors.success} />
@@ -266,7 +251,7 @@ export function PermissionsGate({ onGranted }: PermissionsGateProps) {
         <Text style={styles.privacyNote}>
           Puedes cambiar estos permisos en cualquier momento desde los Ajustes de tu dispositivo.
         </Text>
-      </Animated.View>
+      </View>
     </View>
   );
 }
