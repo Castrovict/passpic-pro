@@ -18,13 +18,6 @@ import {
   Text,
   View,
 } from "react-native";
-import Animated, {
-  FadeIn,
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
 import { captureRef } from "react-native-view-shot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
@@ -62,7 +55,7 @@ function PhotoDetailScreenInner() {
   const photo = getPhoto(id!);
   const country = photo ? COUNTRY_FORMATS.find((c) => c.code === photo.countryCode) : null;
 
-  const scoreAnim = useSharedValue(0);
+  const [scoreWidth, setScoreWidth] = useState("0%");
 
   const captureWhiteBg = useCallback(async () => {
     if (isWeb || !whiteBgRef.current) return;
@@ -104,19 +97,12 @@ function PhotoDetailScreenInner() {
       return () => clearInterval(interval);
     }
     if (photo?.status === "done" && photo.processedUri) {
-      scoreAnim.value = withSpring(
-        (photo.validationResults?.score ?? 0) / 100,
-        { damping: 20, stiffness: 90 }
-      );
+      const pct = Math.round(photo.validationResults?.score ?? 0);
+      setScoreWidth(pct + "%");
       setTimeout(captureWhiteBg, 1200);
-      // Muestra interstitial 2s después de que se muestra el resultado
       setTimeout(showAd, 2000);
     }
   }, [photo?.status, photo?.processedUri]);
-
-  const scoreBarStyle = useAnimatedStyle(() => ({
-    width: `${scoreAnim.value * 100}%`,
-  }));
 
   const shareUri = whiteBgUri ?? photo?.processedUri ?? null;
 
@@ -278,12 +264,12 @@ function PhotoDetailScreenInner() {
         showsVerticalScrollIndicator={false}
       >
         {isProcessing ? (
-          <Animated.View entering={FadeIn} style={styles.processingCard}>
+          <View style={styles.processingCard}>
             <ProcessingAnimation step={processingStep} />
-          </Animated.View>
+          </View>
         ) : (
           <>
-            <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.photoFrame}>
+            <View style={styles.photoFrame}>
               <View style={styles.viewShotWrap}>
                 <View ref={whiteBgRef} style={styles.whiteBgContainer} collapsable={false}>
                   <View
@@ -321,7 +307,7 @@ function PhotoDetailScreenInner() {
 
               {/* Background removal status badge */}
               {isDone && (
-                <Animated.View entering={FadeIn.delay(200)} style={[
+                <View style={[
                   styles.bgDoneBadge,
                   !whiteBgUri && styles.bgDoneBadgeWarn,
                 ]}>
@@ -347,7 +333,7 @@ function PhotoDetailScreenInner() {
                       </Text>
                     </>
                   )}
-                </Animated.View>
+                </View>
               )}
 
               {country && (
@@ -369,10 +355,10 @@ function PhotoDetailScreenInner() {
                   <Text style={styles.previewTapText}>{t.tapToPreview}</Text>
                 </Pressable>
               )}
-            </Animated.View>
+            </View>
 
             {photo.validationResults && (
-              <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.card}>
+              <View style={styles.card}>
                 <View style={styles.cardHeader}>
                   <Text style={styles.cardTitle}>{t.qualityScore}</Text>
                   <ValidationBadge score={photo.validationResults.score} />
@@ -386,11 +372,10 @@ function PhotoDetailScreenInner() {
                 </View>
 
                 <View style={styles.scoreBar}>
-                  <Animated.View
+                  <View
                     style={[
                       styles.scoreBarFill,
-                      { backgroundColor: scoreColor },
-                      scoreBarStyle,
+                      { backgroundColor: scoreColor, width: scoreWidth },
                     ]}
                   />
                 </View>
@@ -404,11 +389,11 @@ function PhotoDetailScreenInner() {
                     ? t.fair
                     : t.needsImprovement}
                 </Text>
-              </Animated.View>
+              </View>
             )}
 
             {photo.validationResults && (
-              <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.card}>
+              <View style={styles.card}>
                 <Text style={styles.cardTitle}>{t.validationChecks}</Text>
                 <View style={styles.divider} />
                 {photo.validationResults.checks.map((c, i) => (
@@ -419,11 +404,11 @@ function PhotoDetailScreenInner() {
                     )}
                   </React.Fragment>
                 ))}
-              </Animated.View>
+              </View>
             )}
 
             {country && (
-              <Animated.View entering={FadeInDown.delay(400).springify()} style={styles.card}>
+              <View style={styles.card}>
                 <Text style={styles.cardTitle}>{t.photoSpecs}</Text>
                 <View style={styles.divider} />
                 {[
@@ -439,10 +424,10 @@ function PhotoDetailScreenInner() {
                     <Text style={styles.specValue}>{value}</Text>
                   </View>
                 ))}
-              </Animated.View>
+              </View>
             )}
 
-            <Animated.View entering={FadeInDown.delay(450).springify()} style={styles.actions}>
+            <View style={styles.actions}>
               <Button
                 title={t.docPreviewTitle}
                 onPress={openDocumentPreview}
@@ -479,13 +464,13 @@ function PhotoDetailScreenInner() {
                 icon={<Feather name="camera" size={16} color={Colors.muted} />}
                 style={[styles.primaryBtn, { opacity: 0.7 }]}
               />
-            </Animated.View>
+            </View>
 
             {savedOk && (
-              <Animated.View entering={FadeIn} style={styles.savedBanner}>
+              <View style={styles.savedBanner}>
                 <Feather name="check-circle" size={16} color="#fff" />
                 <Text style={styles.savedBannerText}>{t.savedToGallery}</Text>
-              </Animated.View>
+              </View>
             )}
           </>
         )}
@@ -504,7 +489,7 @@ function PhotoDetailScreenInner() {
       >
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={() => setShowPreview(false)} />
-          <Animated.View entering={FadeInDown.springify()} style={styles.modalSheet}>
+          <View style={styles.modalSheet}>
 
             {/* Handle */}
             <View style={styles.sheetHandle} />
@@ -613,7 +598,7 @@ function PhotoDetailScreenInner() {
             </View>
 
             <View style={{ height: insets.bottom + 8 }} />
-          </Animated.View>
+          </View>
         </View>
       </Modal>
 

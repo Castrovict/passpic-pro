@@ -1,13 +1,5 @@
-import React, { useEffect } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-  Easing,
-} from "react-native-reanimated";
+import React, { useEffect, useRef } from "react";
+import { Animated, StyleSheet, Text, View } from "react-native";
 import Colors from "@/constants/colors";
 import { useLang } from "@/context/LangContext";
 import { hasRemoveBgKey } from "@/utils/removeBackground";
@@ -36,43 +28,42 @@ export function ProcessingAnimation({ step = 0 }: ProcessingAnimationProps) {
   const { lang } = useLang();
   const STEPS = lang === "es" ? STEPS_ES : STEPS_EN;
   const aiEnabled = hasRemoveBgKey();
-  const opacity = useSharedValue(0);
-  const scale = useSharedValue(0.95);
-  const rotate = useSharedValue(0);
+
+  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.95)).current;
+  const rotate = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    opacity.value = withRepeat(
-      withSequence(withTiming(1, { duration: 600 }), withTiming(0.6, { duration: 600 })),
-      -1,
-      false
-    );
-    scale.value = withRepeat(
-      withSequence(withTiming(1, { duration: 800 }), withTiming(0.95, { duration: 800 })),
-      -1,
-      true
-    );
-    rotate.value = withRepeat(
-      withTiming(360, { duration: 2000, easing: Easing.linear }),
-      -1,
-      false
-    );
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.6, duration: 600, useNativeDriver: true }),
+      ])
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(scale, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 0.95, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+
+    Animated.loop(
+      Animated.timing(rotate, { toValue: 1, duration: 2000, useNativeDriver: true })
+    ).start();
   }, []);
 
-  const pulseStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ scale: scale.value }],
-  }));
-
-  const spinStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotate.value}deg` }],
-  }));
+  const spin = rotate.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
 
   return (
     <View style={styles.container}>
       <View style={styles.iconWrap}>
-        <Animated.View style={[styles.ring1, pulseStyle]} />
-        <Animated.View style={[styles.ring2, pulseStyle]} />
-        <Animated.View style={[styles.spinner, spinStyle]}>
+        <Animated.View style={[styles.ring1, { opacity, transform: [{ scale }] }]} />
+        <Animated.View style={[styles.ring2, { opacity, transform: [{ scale }] }]} />
+        <Animated.View style={[styles.spinner, { transform: [{ rotate: spin }] }]}>
           <View style={styles.spinnerDot} />
         </Animated.View>
         <View style={styles.iconCenter}>
@@ -86,7 +77,7 @@ export function ProcessingAnimation({ step = 0 }: ProcessingAnimationProps) {
         </View>
       )}
 
-      <Animated.Text style={[styles.stepText, { opacity: opacity.value }]}>
+      <Animated.Text style={[styles.stepText, { opacity }]}>
         {STEPS[Math.min(step, STEPS.length - 1)]}
       </Animated.Text>
       <View style={styles.dotsRow}>
