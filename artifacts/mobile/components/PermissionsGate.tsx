@@ -119,7 +119,6 @@ export function PermissionsGate({ onGranted }: PermissionsGateProps) {
         const allDone = updated.filter((p) => p.required).every((p) => p.granted);
         if (allDone) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          });
           setAllGranted(true);
           setTimeout(onGranted, 800);
         }

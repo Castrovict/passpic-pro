@@ -1,41 +1,49 @@
 import React, { Component, ReactNode } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { getBannerUnitId } from "../config/admob";
 
+// Carga dinámica para no crashear en Expo Go (donde el módulo nativo no existe)
 let BannerAd: any = null;
 let BannerAdSize: any = null;
-let TestIds: any = null;
 try {
   const admob = require("react-native-google-mobile-ads");
   BannerAd = admob.BannerAd;
   BannerAdSize = admob.BannerAdSize;
-  TestIds = admob.TestIds;
 } catch (e) {
-  console.warn("[AdBanner] AdMob not available:", e);
+  console.warn("[AdBanner] AdMob no disponible (normal en Expo Go):", (e as Error).message);
 }
 
+/** Error boundary para atrapar crashes del WebView de AdMob */
 class AdSafeWrapper extends Component<{ children: ReactNode }, { crashed: boolean }> {
   state = { crashed: false };
-  static getDerivedStateFromError() { return { crashed: true }; }
-  componentDidCatch(e: Error) { console.warn("[AdBanner] render error caught:", e.message); }
-  render() { return this.state.crashed ? null : this.props.children; }
+  static getDerivedStateFromError() {
+    return { crashed: true };
+  }
+  componentDidCatch(e: Error) {
+    console.warn("[AdBanner] render error capturado:", e.message);
+  }
+  render() {
+    return this.state.crashed ? null : this.props.children;
+  }
 }
 
-const BANNER_UNIT_ID_ANDROID = "ca-app-pub-4394857612598690/6430674069";
-
+/**
+ * Banner publicitario de AdMob.
+ * - En DEV: muestra el banner de prueba de Google.
+ * - En PROD: muestra el banner real (ID desde config/admob.ts).
+ * - En Web / Expo Go sin módulo nativo: no renderiza nada (evita errores).
+ */
 export function AdBanner() {
-  if (!BannerAd || !BannerAdSize || !TestIds) return null;
+  // Si el módulo nativo no cargó, retornamos null silenciosamente
+  if (!BannerAd || !BannerAdSize) return null;
 
-  const UNIT_ID = __DEV__
-    ? TestIds.BANNER
-    : Platform.OS === "android"
-    ? BANNER_UNIT_ID_ANDROID
-    : TestIds.BANNER;
+  const unitId = getBannerUnitId();
 
   return (
     <AdSafeWrapper>
       <View style={styles.container}>
         <BannerAd
-          unitId={UNIT_ID}
+          unitId={unitId}
           size={BannerAdSize.BANNER}
           requestOptions={{ requestNonPersonalizedAdsOnly: false }}
         />

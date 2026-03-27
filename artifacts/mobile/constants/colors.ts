@@ -16,6 +16,8 @@ const error = "#EF4444";
 const errorLight = "#FEF2F2";
 const successLight = "#F0FDF4";
 const gold = "#FFD700";
+const primary = "#1E5FFF";   // alias de cobalt
+const textMuted = "#8BA0BC"; // alias de muted
 
 export default {
   navy,
@@ -36,6 +38,8 @@ export default {
   errorLight,
   successLight,
   gold,
+  primary,
+  textMuted,
   light: {
     text: navy,
     background: offWhite,

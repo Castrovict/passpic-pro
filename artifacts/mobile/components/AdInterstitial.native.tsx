@@ -1,35 +1,39 @@
 import { useEffect, useRef } from "react";
-import { Platform } from "react-native";
+import { getInterstitialUnitId } from "../config/admob";
 
+// Carga dinámica para no crashear en Expo Go (donde el módulo nativo no existe)
 let InterstitialAd: any = null;
 let AdEventType: any = null;
-let TestIds: any = null;
 try {
   const admob = require("react-native-google-mobile-ads");
   InterstitialAd = admob.InterstitialAd;
   AdEventType = admob.AdEventType;
-  TestIds = admob.TestIds;
 } catch (e) {
-  console.warn("[AdInterstitial] AdMob not available:", e);
+  console.warn("[AdInterstitial] AdMob no disponible (normal en Expo Go):", (e as Error).message);
 }
 
-const INTERSTITIAL_UNIT_ID_ANDROID = "ca-app-pub-4394857612598690/4880821071";
-
+/**
+ * Hook para anuncios intersticiales de AdMob.
+ * - En DEV: carga el anuncio de prueba de Google.
+ * - En PROD: carga el anuncio real (ID desde config/admob.ts).
+ * - En Web / Expo Go sin módulo nativo: showAd() es un no-op seguro.
+ *
+ * Uso:
+ *   const { showAd } = useInterstitialAd();
+ *   // Llamar showAd() después de completar una acción importante (ej: guardar foto)
+ */
 export function useInterstitialAd() {
   const adRef = useRef<any>(null);
   const loadedRef = useRef(false);
   const shownRef = useRef(false);
 
   const loadAd = () => {
-    if (!InterstitialAd || !AdEventType || !TestIds) return;
-    try {
-      const UNIT_ID = __DEV__
-        ? TestIds.INTERSTITIAL
-        : Platform.OS === "android"
-        ? INTERSTITIAL_UNIT_ID_ANDROID
-        : TestIds.INTERSTITIAL;
+    // Si el módulo nativo no está disponible, no hacer nada
+    if (!InterstitialAd || !AdEventType) return;
 
-      const ad = InterstitialAd.createForAdRequest(UNIT_ID, {
+    try {
+      const unitId = getInterstitialUnitId();
+      const ad = InterstitialAd.createForAdRequest(unitId, {
         requestNonPersonalizedAdsOnly: false,
       });
 
@@ -45,26 +49,34 @@ export function useInterstitialAd() {
         unsubLoaded();
         unsubError();
         unsubClosed();
+        // Pre-cargar el siguiente anuncio después de cerrar el actual
         setTimeout(loadAd, 500);
       });
 
-      try { ad.load(); } catch (e) { console.warn("[AdInterstitial] load() failed:", e); }
+      try {
+        ad.load();
+      } catch (e) {
+        console.warn("[AdInterstitial] load() falló:", e);
+      }
       adRef.current = ad;
     } catch (e) {
-      console.warn("[AdInterstitial] createForAdRequest failed:", e);
+      console.warn("[AdInterstitial] createForAdRequest falló:", e);
     }
   };
 
   useEffect(() => {
     loadAd();
-    return () => { adRef.current = null; };
+    return () => {
+      adRef.current = null;
+    };
   }, []);
 
+  /** Muestra el anuncio si está cargado. No hace nada si no está disponible. */
   const showAd = () => {
     if (!shownRef.current && loadedRef.current && adRef.current) {
       shownRef.current = true;
       void Promise.resolve(adRef.current.show()).catch((e: Error) => {
-        console.warn("[AdInterstitial] show() failed:", e);
+        console.warn("[AdInterstitial] show() falló:", e);
         shownRef.current = false;
       });
     }
