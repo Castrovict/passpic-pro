@@ -74,7 +74,7 @@ function PhotoDetailScreenInner() {
         encoding: FileSystem.EncodingType.Base64,
       });
       const ext = photoUri.toLowerCase().endsWith(".png") ? "png" : "jpeg";
-      const cw = 600;
+      const cw = 400;
       const ch = Math.round(cw * (heightMm / widthMm));
       const html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{margin:0;padding:0;}body{background:#fff;overflow:hidden;}</style></head><body>
 <canvas id="c" width="${cw}" height="${ch}"></canvas>
@@ -86,8 +86,9 @@ img.onload=function(){
   ctx.fillStyle='#ffffff';
   ctx.fillRect(0,0,c.width,c.height);
   ctx.drawImage(img,0,0,c.width,c.height);
-  window.ReactNativeWebView.postMessage(JSON.stringify({type:'WHITEBG',data:c.toDataURL('image/jpeg',0.95)}));
+  window.ReactNativeWebView.postMessage(JSON.stringify({type:'WHITEBG',data:c.toDataURL('image/jpeg',0.92)}));
 };
+img.onerror=function(){window.ReactNativeWebView.postMessage(JSON.stringify({type:'ERROR'}));};
 img.src='data:image/${ext};base64,${b64}';
 </script></body></html>`;
       setCompositorHtml(html);
@@ -107,9 +108,13 @@ img.src='data:image/${ext};base64,${b64}';
         });
         setWhiteBgUri(dest);
         setCompositorHtml(null);
+      } else if (msg.type === "ERROR") {
+        console.warn("[compositor] canvas error");
+        setCompositorHtml(null);
       }
     } catch (e) {
       console.warn("[compositor] message failed:", e);
+      setCompositorHtml(null);
     }
   }, []);
 
@@ -609,16 +614,16 @@ img.src='data:image/${ext};base64,${b64}';
         />
       )}
 
-      {/* ── Hidden WebView compositor: draws photo on white canvas ─────────── */}
+      {/* ── WebView compositor: nearly-transparent overlay, draws photo on white canvas ── */}
       {compositorHtml && !isWeb && (
         <View
-          style={{ position: "absolute", width: 1, height: 1, overflow: "hidden" }}
+          style={StyleSheet.absoluteFill}
           pointerEvents="none"
         >
           <WebView
             ref={compositorRef}
             source={{ html: compositorHtml }}
-            style={{ width: 600, height: 800 }}
+            style={{ flex: 1, opacity: 0.02 }}
             onMessage={handleCompositorMessage}
             javaScriptEnabled
             scrollEnabled={false}
