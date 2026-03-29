@@ -185,7 +185,7 @@ export default function CountrySelectorScreen() {
       <SectionList
         ref={listRef}
         sections={sections}
-        keyExtractor={(row, idx) => row.map((c) => c.code).join("-") + idx}
+        keyExtractor={(row, idx) => row.map((c: CountryFormat) => c.code).join("-") + idx}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -208,7 +208,7 @@ export default function CountrySelectorScreen() {
         )}
         renderItem={({ item: row }) => (
           <View style={styles.gridRow}>
-            {row.map((country) => {
+            {row.map((country: CountryFormat) => {
               const isSelected = selectedCountry.code === country.code;
               return (
                 <Pressable

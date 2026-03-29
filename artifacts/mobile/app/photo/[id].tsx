@@ -115,7 +115,7 @@ function PhotoDetailScreenInner() {
       let permGranted = false;
       try {
         const perm = await MediaLibrary.requestPermissionsAsync();
-        permGranted = perm.status === "granted" || perm.status === "limited";
+        permGranted = perm.status === "granted" || (perm.status as string) === "limited";
       } catch {
         permGranted = true;
       }
@@ -289,7 +289,7 @@ function PhotoDetailScreenInner() {
                   <View
                     style={[
                       styles.scoreBarFill,
-                      { backgroundColor: scoreColor, width: scoreWidth },
+                      { backgroundColor: scoreColor, width: scoreWidth as any },
                     ]}
                   />
                 </View>
