@@ -1,127 +1,129 @@
 # PassPic PRO — Workspace
 
+## Estado del Proyecto (al 29 Mar 2026)
+
+La app está **completa y probada en Expo Go**. Siguiente paso: build APK cuando la cuota EAS se renueve el **1 Abril 2026**.
+
+---
+
 ## Mobile App (PassPic PRO)
 
-**Expo React Native** app in `artifacts/mobile/`:
+**Expo React Native** app en `artifacts/mobile/`:
 
-- **90+ países** organizados por región (Latinoamérica, Europa, Asia, Oriente Medio, África, Oceanía)
+- **154+ países** organizados por región (Latinoamérica, Europa, Asia, Oriente Medio, África, Oceanía)
 - **Idioma ES/EN** — toggle persistido en AsyncStorage via `LangContext`
 - **Cámara in-app** via `expo-camera` + `CameraModal` — toggle frontal/trasera
   - Guía visual ICAO: óvalo blanco + línea de ojos amarilla ("OJOS") al 35% desde arriba + checklist estático de posición
   - El obturador **solo dispara cuando el usuario lo presiona** — sin auto-disparo ni capturas periódicas
-  - El endpoint `POST /api/analyze-face` existe en el servidor (análisis YCbCr) pero ya no se llama desde la cámara
+  - `useFocusEffect` cierra la cámara al cambiar de tab (ahorra batería)
+  - Permisos totalmente localizados (ES/EN) via `PermissionsGate`
 - **Galería** via `expo-image-picker` — permisos pedidos contextualmente
 - **Fondo blanco gratuito** — motor ONNX local `@imgly/background-removal-node` + `sharp`, sin API key ni costo
   - Endpoint `POST /api/remove-bg` con `sharp` para compositar PNG transparente sobre blanco → JPEG
-- **Validación de calidad simulada** con puntuación y checks
-- **AdMob** — `react-native-google-mobile-ads` con estrategia de monetización global:
-  - `config/admob.ts` — IDs centralizados con auto-switch DEV/PROD; helpers `getBannerUnitId()`, `getInterstitialUnitId()`, `getRewardedUnitId()`
-  - `AdBanner.native.tsx` — **Adaptive Anchored Banner** (max eCPM en cualquier pantalla, tablets, plegables)
-  - `AdInterstitial.native.tsx` — Interstitial auto-cargado, se dispara 2s después de procesar foto
-  - `AdRewarded.native.tsx` — **Rewarded video** para desbloquear descarga HD (modelo "prueba y paga")
+  - Primera ejecución: ~2-3 min (descarga modelo). Las siguientes son rápidas.
+  - `removeBackground.ts` tiene timeout 30s/90s + callback `onRetrying()`
+  - Archivo caché temporal eliminado tras `saveToLibraryAsync`
+- **Validación de calidad simulada** con puntuación y checks ICAO
+- **AdMob** — `react-native-google-mobile-ads` con monetización global:
+  - `config/admob.ts` — IDs centralizados con auto-switch DEV/PROD
+  - `AdBanner.native.tsx` — Adaptive Anchored Banner
+  - `AdInterstitial.native.tsx` — se dispara 2s después de procesar foto
+  - `AdRewarded.native.tsx` — desbloquea descarga HD (modelo "prueba y paga")
   - Android App ID PROD: `ca-app-pub-4394857612598690~5783806800`
   - Banner PROD: `ca-app-pub-4394857612598690/6430674069`
   - Interstitial PROD: `ca-app-pub-4394857612598690/4880821071`
   - TODO: Crear unidad Rewarded en AdMob Console → copiar ID en `config/admob.ts`
   - TODO: Crear unidades iOS → copiar IDs en `config/admob.ts`
 - **Certificado ICAO** — modal compartible con puntuación, checks y specs por país (score ≥ 60)
+  - Botón "Compartir Certificado" usa `Share` importado estáticamente desde `react-native`
 - **Flujo "Ver Anuncio → HD"** — botón gold en Document Preview Modal; rewarded ad → guarda en galería
 
 ---
 
-# Workspace
+## Cuentas y Credenciales
 
-## Overview
+- **Expo account**: victorcastro / vecrec46@gmail.com
+- **projectId**: `ff98d1ca-932d-459c-96ab-67f53afdfce2`
+- **EXPO_TOKEN**: `WoxjzWVOIVGB_ES7HS4C-YuFSUSjajB9JDoAbn5Z`
+- **API desplegada**: `https://workspace--vecrec46.replit.app`
+- **AdMob App ID Android**: `ca-app-pub-4394857612598690~5783806800`
+- **GitHub repo**: `github.com/Castrovict/passpic-pro`
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+---
 
-## Stack
+## Próximos Pasos (cuando haya cuota EAS el 1 Abril 2026)
 
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **TypeScript version**: 5.9
-- **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
+### Opción A — EAS Build (recomendada)
 
-## Structure
-
-```text
-artifacts-monorepo/
-├── artifacts/              # Deployable applications
-│   └── api-server/         # Express API server
-├── lib/                    # Shared libraries
-│   ├── api-spec/           # OpenAPI spec + Orval codegen config
-│   ├── api-client-react/   # Generated React Query hooks
-│   ├── api-zod/            # Generated Zod schemas from OpenAPI
-│   └── db/                 # Drizzle ORM schema + DB connection
-├── scripts/                # Utility scripts (single workspace package)
-│   └── src/                # Individual .ts scripts, run via `pnpm --filter @workspace/scripts run <script>`
-├── pnpm-workspace.yaml     # pnpm workspace (artifacts/*, lib/*, lib/integrations/*, scripts)
-├── tsconfig.base.json      # Shared TS options (composite, bundler resolution, es2022)
-├── tsconfig.json           # Root TS project references
-└── package.json            # Root package with hoisted devDeps
+```bash
+cd artifacts/mobile && EXPO_TOKEN=WoxjzWVOIVGB_ES7HS4C-YuFSUSjajB9JDoAbn5Z EAS_NO_VCS=1 eas build --platform android --profile preview --non-interactive
 ```
 
-## TypeScript & Composite Projects
+- `preview` → APK para probar en dispositivo real
+- `production` → AAB para publicar en Google Play
+- Ambos perfiles están configurados en `eas.json`
 
-Every package extends `tsconfig.base.json` which sets `composite: true`. The root `tsconfig.json` lists all packages as project references. This means:
+### Opción B — GitHub Actions (sin cuota EAS)
 
-- **Always typecheck from the root** — run `pnpm run typecheck` (which runs `tsc --build --emitDeclarationOnly`). This builds the full dependency graph so that cross-package imports resolve correctly. Running `tsc` inside a single package will fail if its dependencies haven't been built yet.
-- **`emitDeclarationOnly`** — we only emit `.d.ts` files during typecheck; actual JS bundling is handled by esbuild/tsx/vite...etc, not `tsc`.
-- **Project references** — when package A depends on package B, A's `tsconfig.json` must list B in its `references` array. `tsc --build` uses this to determine build order and skip up-to-date packages.
+- Crear archivo `.github/workflows/android-apk.yml` en el repo via GitHub web UI
+- Añadir secret `EXPO_TOKEN` en Settings → Secrets del repo
+- Usar `pnpm install --no-frozen-lockfile` en el workflow
 
-## Root Scripts
+---
 
-- `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages that define it
-- `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly` using project references
+## API Server
 
-## Packages
+- Puerto: `8080` (variable `PORT`)
+- Endpoints relevantes:
+  - `POST /api/remove-bg` — elimina fondo con ONNX, devuelve JPEG con fondo blanco
+  - `POST /api/analyze-face` — análisis YCbCr (disponible pero no usado desde la cámara)
 
-### `artifacts/api-server` (`@workspace/api-server`)
+---
 
-Express 5 API server. Routes live in `src/routes/` and use `@workspace/api-zod` for request and response validation and `@workspace/db` for persistence.
+## Archivos Importantes
 
-- Entry: `src/index.ts` — reads `PORT`, starts Express
-- App setup: `src/app.ts` — mounts CORS, JSON/urlencoded parsing, routes at `/api`
-- Routes: `src/routes/index.ts` mounts sub-routers; `src/routes/health.ts` exposes `GET /health` (full path: `/api/health`)
-- Depends on: `@workspace/db`, `@workspace/api-zod`
-- `pnpm --filter @workspace/api-server run dev` — run the dev server
-- `pnpm --filter @workspace/api-server run build` — production esbuild bundle (`dist/index.cjs`)
-- Build bundles an allowlist of deps (express, cors, pg, drizzle-orm, zod, etc.) and externalizes the rest
+```
+artifacts/mobile/
+├── app.json                     # Config Expo: AdMob plugin, permisos, projectId, assets
+├── eas.json                     # Perfiles EAS: preview (APK) + production (AAB)
+├── config/admob.ts              # IDs AdMob centralizados
+├── context/LangContext.tsx      # Todas las traducciones ES/EN
+├── context/PhotoContext.tsx     # Estado global de fotos
+├── utils/removeBackground.ts    # Cliente HTTP remove-bg con retry y timeouts
+├── utils/photoProcessing.ts     # Validación ICAO simulada
+├── constants/countries.ts       # 154+ formatos de foto por país
+├── components/
+│   ├── CameraModal.tsx          # Cámara in-app con guía ICAO
+│   ├── PermissionsGate.tsx      # Permisos localizados
+│   ├── AdBanner.native.tsx      # Banner AdMob adaptativo
+│   ├── AdInterstitial.native.tsx
+│   └── AdRewarded.native.tsx
+└── app/
+    ├── (tabs)/index.tsx         # Pantalla principal (selector de país + cámara)
+    └── photo/[id].tsx           # Resultado: foto procesada + certificado ICAO
+```
 
-### `lib/db` (`@workspace/db`)
+---
 
-Database layer using Drizzle ORM with PostgreSQL. Exports a Drizzle client instance and schema models.
+## Workspace
 
-- `src/index.ts` — creates a `Pool` + Drizzle instance, exports schema
-- `src/schema/index.ts` — barrel re-export of all models
-- `src/schema/<modelname>.ts` — table definitions with `drizzle-zod` insert schemas (no models definitions exist right now)
-- `drizzle.config.ts` — Drizzle Kit config (requires `DATABASE_URL`, automatically provided by Replit)
-- Exports: `.` (pool, db, schema), `./schema` (schema only)
+### Overview
 
-Production migrations are handled by Replit when publishing. In development, we just use `pnpm --filter @workspace/db run push`, and we fallback to `pnpm --filter @workspace/db run push-force`.
+pnpm workspace monorepo con TypeScript. Cada paquete gestiona sus propias dependencias.
 
-### `lib/api-spec` (`@workspace/api-spec`)
+### Stack
 
-Owns the OpenAPI 3.1 spec (`openapi.yaml`) and the Orval config (`orval.config.ts`). Running codegen produces output into two sibling packages:
+- **Monorepo**: pnpm workspaces
+- **Node.js**: 24
+- **TypeScript**: 5.9
+- **API**: Express 5
+- **DB**: PostgreSQL + Drizzle ORM
+- **Validation**: Zod (`zod/v4`), `drizzle-zod`
+- **API codegen**: Orval (desde OpenAPI spec)
 
-1. `lib/api-client-react/src/generated/` — React Query hooks + fetch client
-2. `lib/api-zod/src/generated/` — Zod schemas
+### Notas Técnicas
 
-Run codegen: `pnpm --filter @workspace/api-spec run codegen`
-
-### `lib/api-zod` (`@workspace/api-zod`)
-
-Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used by `api-server` for response validation.
-
-### `lib/api-client-react` (`@workspace/api-client-react`)
-
-Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
-
-### `scripts` (`@workspace/scripts`)
-
-Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
+- `expo-file-system` siempre importar desde `expo-file-system/legacy`
+- `Share` de react-native debe importarse **estáticamente** (no con dynamic import)
+- `_layout.tsx` usa `AnimatedSplash` con Reanimated — no tocar
+- El modelo ONNX de remove-bg se descarga solo la primera vez (~2-3 min)
