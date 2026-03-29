@@ -29,6 +29,7 @@ import { CheckRow, ValidationBadge } from "@/components/ui/ValidationBadge";
 import { Button } from "@/components/ui/Button";
 import { AdBanner } from "@/components/AdBanner";
 import { useInterstitialAd } from "@/components/AdInterstitial";
+import { useRewardedAd } from "@/components/AdRewarded";
 import PhotoEditorSheet from "@/components/PhotoEditorSheet";
 
 function PhotoDetailScreenInner() {
@@ -37,11 +38,14 @@ function PhotoDetailScreenInner() {
   const { t, lang } = useLang();
   const insets = useSafeAreaInsets();
   const { showAd } = useInterstitialAd();
+  const { showRewardedAd } = useRewardedAd();
   const [processingStep, setProcessingStep] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
+  const [hdLoading, setHdLoading] = useState(false);
+  const [showIcaoModal, setShowIcaoModal] = useState(false);
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
   const bottomPad = isWeb ? 34 : insets.bottom;
@@ -135,6 +139,38 @@ function PhotoDetailScreenInner() {
     } finally {
       setSaving(false);
     }
+  };
+
+  /** Muestra un anuncio rewarded y luego guarda la foto en HD */
+  const handleHDSave = async () => {
+    if (isWeb) {
+      Alert.alert(t.mobileOnly, t.mobileOnlyDesc);
+      return;
+    }
+    if (!shareUri) return;
+    setHdLoading(true);
+    try {
+      const rewarded = await showRewardedAd();
+      if (!rewarded) {
+        Alert.alert(t.adError, "");
+        setHdLoading(false);
+        return;
+      }
+      await handleSaveToGallery();
+    } finally {
+      setHdLoading(false);
+    }
+  };
+
+  const handleShareIcaoReport = async () => {
+    if (!photo?.validationResults || !country) return;
+    const score = photo.validationResults.score;
+    const msg = t.icaoShareText(country.name, score);
+    try {
+      await import("react-native").then(({ Share }) =>
+        Share.share({ message: msg, title: t.icaoReportTitle })
+      );
+    } catch {}
   };
 
   const handleEditorApply = useCallback(
@@ -489,26 +525,61 @@ function PhotoDetailScreenInner() {
 
             {/* Action buttons */}
             <View style={styles.sheetActions}>
+              {/* HD Download via Rewarded Ad — modelo "prueba y luego paga" */}
               <Pressable
-                onPress={async () => {
-                  await handleSaveToGallery();
-                }}
-                style={({ pressed }) => [styles.sheetBtn, styles.sheetBtnPrimary, { opacity: pressed || saving ? 0.8 : 1 }]}
-                disabled={saving}
+                onPress={async () => { setShowPreview(false); setTimeout(handleHDSave, 300); }}
+                style={({ pressed }) => [
+                  styles.sheetBtn, styles.sheetBtnGold,
+                  { opacity: pressed || hdLoading || saving ? 0.8 : 1 }
+                ]}
+                disabled={hdLoading || saving}
               >
-                <Feather name={savedOk ? "check" : "download"} size={18} color="#fff" />
-                <Text style={styles.sheetBtnPrimaryText}>
-                  {saving ? t.saving : savedOk ? t.saved : t.saveToGallery}
-                </Text>
+                <Feather
+                  name={savedOk ? "check" : hdLoading ? "loader" : "star"}
+                  size={18}
+                  color="#fff"
+                />
+                <View>
+                  <Text style={styles.sheetBtnGoldText}>
+                    {hdLoading ? t.adLoading : savedOk ? t.saved : t.watchAdForHD}
+                  </Text>
+                  {!hdLoading && !savedOk && (
+                    <Text style={styles.sheetBtnGoldSub}>{t.watchAdSubtitle}</Text>
+                  )}
+                </View>
               </Pressable>
 
-              <Pressable
-                onPress={() => { setShowPreview(false); setTimeout(handleShare, 300); }}
-                style={({ pressed }) => [styles.sheetBtn, styles.sheetBtnSecondary, { opacity: pressed ? 0.8 : 1 }]}
-              >
-                <Feather name="share-2" size={18} color={Colors.cobalt} />
-                <Text style={styles.sheetBtnSecondaryText}>{t.share}</Text>
-              </Pressable>
+              <View style={styles.sheetRowActions}>
+                <Pressable
+                  onPress={async () => { setShowPreview(false); setTimeout(handleSaveToGallery, 300); }}
+                  style={({ pressed }) => [styles.sheetBtn, styles.sheetBtnSecondary, { flex: 1, opacity: pressed || saving ? 0.8 : 1 }]}
+                  disabled={saving}
+                >
+                  <Feather name={savedOk ? "check" : "download"} size={16} color={Colors.cobalt} />
+                  <Text style={styles.sheetBtnSecondaryText}>
+                    {saving ? t.saving : t.saveToGallery}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => { setShowPreview(false); setTimeout(handleShare, 300); }}
+                  style={({ pressed }) => [styles.sheetBtn, styles.sheetBtnSecondary, { flex: 1, opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <Feather name="share-2" size={16} color={Colors.cobalt} />
+                  <Text style={styles.sheetBtnSecondaryText}>{t.share}</Text>
+                </Pressable>
+              </View>
+
+              {/* Certificado ICAO — visible si score ≥ 60 */}
+              {photo.validationResults && photo.validationResults.score >= 60 && (
+                <Pressable
+                  onPress={() => { setShowPreview(false); setTimeout(() => setShowIcaoModal(true), 300); }}
+                  style={({ pressed }) => [styles.sheetBtn, styles.sheetBtnIcao, { opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <Feather name="award" size={16} color={Colors.success} />
+                  <Text style={styles.sheetBtnIcaoText}>{t.icaoCertBtn}</Text>
+                </Pressable>
+              )}
             </View>
 
             <View style={{ height: insets.bottom + 8 }} />
@@ -525,6 +596,100 @@ function PhotoDetailScreenInner() {
           onApply={handleEditorApply}
         />
       )}
+
+      {/* ── ICAO Certificate Modal ───────────────────────────────────────── */}
+      <Modal
+        visible={showIcaoModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowIcaoModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setShowIcaoModal(false)} />
+          <View style={styles.modalSheet}>
+            <View style={styles.sheetHandle} />
+
+            <View style={styles.sheetHeader}>
+              <View style={styles.sheetTitleRow}>
+                <Feather name="award" size={18} color={Colors.success} />
+                <Text style={styles.sheetTitle}>{t.icaoReportTitle}</Text>
+              </View>
+              <Pressable onPress={() => setShowIcaoModal(false)} hitSlop={12}>
+                <View style={styles.closeBtn}>
+                  <Feather name="x" size={18} color={Colors.navy} />
+                </View>
+              </Pressable>
+            </View>
+
+            {/* Certificate body */}
+            <View style={styles.icaoCertBody}>
+              <View style={styles.icaoBadgeRow}>
+                <View style={styles.icaoBadge}>
+                  <Feather name="check-circle" size={28} color={Colors.success} />
+                  <Text style={styles.icaoBadgeText}>{t.icaoReportPass}</Text>
+                </View>
+                {photo.validationResults && (
+                  <View style={styles.icaoScoreBox}>
+                    <Text style={styles.icaoScoreNum}>{photo.validationResults.score}</Text>
+                    <Text style={styles.icaoScoreDen}>/100</Text>
+                    <Text style={styles.icaoScoreLabel}>ICAO</Text>
+                  </View>
+                )}
+              </View>
+
+              <Text style={styles.icaoSubtitle}>{t.icaoReportSubtitle}</Text>
+
+              {/* Checks list */}
+              {photo.validationResults && (
+                <View style={styles.icaoCheckList}>
+                  <Text style={styles.icaoChecksTitle}>{t.icaoChecks}</Text>
+                  {photo.validationResults.checks.map((c) => (
+                    <View key={c.label} style={styles.icaoCheckItem}>
+                      <Feather
+                        name={c.passed ? "check" : "x"}
+                        size={14}
+                        color={c.passed ? Colors.success : Colors.muted}
+                      />
+                      <Text style={[styles.icaoCheckLabel, { color: c.passed ? Colors.navy : Colors.muted }]}>
+                        {c.label}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Country + specs */}
+              {country && (
+                <View style={styles.icaoCountryRow}>
+                  <Text style={styles.icaoCountryFlag}>{country.flag}</Text>
+                  <View>
+                    <Text style={styles.icaoCountryName}>{country.name}</Text>
+                    <Text style={styles.icaoCountrySpec}>
+                      {country.widthMm}×{country.heightMm}mm · {country.dpi} DPI · ICAO 9303
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              <Text style={styles.icaoGeneratedBy}>
+                PassPic PRO · {new Date().toLocaleDateString()}
+              </Text>
+            </View>
+
+            <View style={styles.sheetActions}>
+              <Pressable
+                onPress={handleShareIcaoReport}
+                style={({ pressed }) => [styles.sheetBtn, styles.sheetBtnIcaoShare, { opacity: pressed ? 0.8 : 1 }]}
+              >
+                <Feather name="share-2" size={18} color="#fff" />
+                <Text style={styles.sheetBtnPrimaryText}>{t.shareReport}</Text>
+              </Pressable>
+            </View>
+
+            <View style={{ height: insets.bottom + 8 }} />
+          </View>
+        </View>
+      </Modal>
 
     </View>
   );
@@ -1066,9 +1231,170 @@ const styles = StyleSheet.create({
   },
   sheetBtnSecondaryText: {
     fontFamily: "Inter_600SemiBold",
-    fontSize: 16,
+    fontSize: 15,
     color: Colors.cobalt,
     letterSpacing: -0.3,
+  },
+  sheetRowActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  sheetBtnGold: {
+    backgroundColor: "#B8860B",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: "#DAA520",
+  },
+  sheetBtnGoldText: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 16,
+    color: "#fff",
+    letterSpacing: -0.3,
+  },
+  sheetBtnGoldSub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    color: "rgba(255,255,255,0.75)",
+    marginTop: 1,
+  },
+  sheetBtnIcao: {
+    backgroundColor: Colors.success + "18",
+    borderWidth: 1.5,
+    borderColor: Colors.success + "50",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 13,
+    borderRadius: 16,
+  },
+  sheetBtnIcaoText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+    color: Colors.success,
+    letterSpacing: -0.3,
+  },
+  sheetBtnIcaoShare: {
+    backgroundColor: Colors.success,
+  },
+  icaoCertBody: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    backgroundColor: Colors.offWhite,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: Colors.success + "30",
+  },
+  icaoBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  icaoBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: Colors.success + "15",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  icaoBadgeText: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 13,
+    color: Colors.success,
+    letterSpacing: 0.5,
+  },
+  icaoScoreBox: {
+    alignItems: "center",
+    backgroundColor: Colors.navy,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  icaoScoreNum: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 22,
+    color: Colors.white,
+    lineHeight: 26,
+  },
+  icaoScoreDen: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    color: Colors.muted,
+  },
+  icaoScoreLabel: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 10,
+    color: Colors.cobalt,
+    letterSpacing: 1,
+    marginTop: 2,
+  },
+  icaoSubtitle: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    color: Colors.muted,
+    lineHeight: 19,
+    marginBottom: 14,
+  },
+  icaoCheckList: {
+    gap: 6,
+    marginBottom: 14,
+  },
+  icaoChecksTitle: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
+    color: Colors.navy,
+    letterSpacing: 0.3,
+    marginBottom: 6,
+  },
+  icaoCheckItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  icaoCheckLabel: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+  },
+  icaoCountryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: Colors.white,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: Colors.silver,
+  },
+  icaoCountryFlag: {
+    fontSize: 24,
+  },
+  icaoCountryName: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    color: Colors.navy,
+  },
+  icaoCountrySpec: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    color: Colors.muted,
+    marginTop: 2,
+  },
+  icaoGeneratedBy: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    color: Colors.muted,
+    textAlign: "center",
+    marginTop: 4,
   },
 });
 

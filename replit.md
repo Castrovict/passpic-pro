@@ -14,11 +14,18 @@
 - **Fondo blanco gratuito** — motor ONNX local `@imgly/background-removal-node` + `sharp`, sin API key ni costo
   - Endpoint `POST /api/remove-bg` con `sharp` para compositar PNG transparente sobre blanco → JPEG
 - **Validación de calidad simulada** con puntuación y checks
-- **AdMob** — `react-native-google-mobile-ads` configurado con IDs de prueba de Google.
-  - Archivos: `AdBanner.native.tsx` (nativo), `AdBanner.web.tsx` (vacío, evita error de bundle)
-  - **IMPORTANTE**: Reemplazar los App ID y Banner ID de prueba con los reales de AdMob antes de publicar
-  - Android App ID: `ca-app-pub-3940256099942544~3347511713` (PRUEBA — reemplazar)
-  - Banner ID: `ca-app-pub-3940256099942544/6300978111` (PRUEBA — reemplazar)
+- **AdMob** — `react-native-google-mobile-ads` con estrategia de monetización global:
+  - `config/admob.ts` — IDs centralizados con auto-switch DEV/PROD; helpers `getBannerUnitId()`, `getInterstitialUnitId()`, `getRewardedUnitId()`
+  - `AdBanner.native.tsx` — **Adaptive Anchored Banner** (max eCPM en cualquier pantalla, tablets, plegables)
+  - `AdInterstitial.native.tsx` — Interstitial auto-cargado, se dispara 2s después de procesar foto
+  - `AdRewarded.native.tsx` — **Rewarded video** para desbloquear descarga HD (modelo "prueba y paga")
+  - Android App ID PROD: `ca-app-pub-4394857612598690~5783806800`
+  - Banner PROD: `ca-app-pub-4394857612598690/6430674069`
+  - Interstitial PROD: `ca-app-pub-4394857612598690/4880821071`
+  - TODO: Crear unidad Rewarded en AdMob Console → copiar ID en `config/admob.ts`
+  - TODO: Crear unidades iOS → copiar IDs en `config/admob.ts`
+- **Certificado ICAO** — modal compartible con puntuación, checks y specs por país (score ≥ 60)
+- **Flujo "Ver Anuncio → HD"** — botón gold en Document Preview Modal; rewarded ad → guarda en galería
 
 ---
 
