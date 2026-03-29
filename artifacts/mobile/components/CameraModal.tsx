@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
+import { useLang } from "@/context/LangContext";
 
 interface CameraModalProps {
   visible: boolean;
@@ -24,7 +25,6 @@ interface CameraModalProps {
   onClose: () => void;
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
 export function CameraModal({
   visible,
   initialFacing = "front",
@@ -32,6 +32,7 @@ export function CameraModal({
   onClose,
 }: CameraModalProps) {
   const insets = useSafeAreaInsets();
+  const { t } = useLang();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
   const bottomPad = isWeb ? 34 : insets.bottom;
@@ -43,11 +44,9 @@ export function CameraModal({
   const cameraRef = useRef<CameraView>(null);
   const isTakingRef = useRef(false);
 
-  // ── Animations (React Native built-in Animated) ──────────────────────────
   const shutterScale = useRef(new Animated.Value(1)).current;
   const flashOpacity = useRef(new Animated.Value(0)).current;
 
-  // ── Camera actions ───────────────────────────────────────────────────────
   const flipCamera = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setFacing((prev) => (prev === "front" ? "back" : "front"));
@@ -89,7 +88,9 @@ export function CameraModal({
     }
   };
 
-  // ── Early returns ────────────────────────────────────────────────────────
+  // ── Early returns ─────────────────────────────────────────────────────────
+  // NOTE: returning null when !visible ensures the CameraView is unmounted
+  // and the camera hardware is released, saving battery.
   if (!visible) return null;
 
   if (isWeb) {
@@ -98,12 +99,10 @@ export function CameraModal({
         <View style={[styles.webFallback, { paddingTop: topPad + 20, paddingBottom: bottomPad + 20 }]}>
           <LinearGradient colors={[Colors.navy, "#0D1F3C"]} style={StyleSheet.absoluteFill} />
           <Feather name="camera-off" size={64} color="rgba(255,255,255,0.3)" />
-          <Text style={styles.webTitle}>Cámara no disponible en navegador</Text>
-          <Text style={styles.webSubtitle}>
-            Para usar la cámara, abre la app en tu móvil con Expo Go o usa "Subir foto" para seleccionar desde la galería.
-          </Text>
+          <Text style={styles.webTitle}>{t.cameraWebTitle}</Text>
+          <Text style={styles.webSubtitle}>{t.cameraWebSubtitle}</Text>
           <Pressable onPress={onClose} style={styles.webCloseBtn}>
-            <Text style={styles.webCloseBtnText}>Cerrar</Text>
+            <Text style={styles.webCloseBtnText}>{t.cancel}</Text>
           </Pressable>
         </View>
       </Modal>
@@ -128,17 +127,15 @@ export function CameraModal({
           <View style={styles.permIcon}>
             <Feather name="camera" size={36} color={Colors.white} />
           </View>
-          <Text style={styles.permTitle}>Se necesita acceso a la cámara</Text>
-          <Text style={styles.permDesc}>
-            Para tomar fotos de pasaporte necesitamos acceder a tu cámara.
-          </Text>
+          <Text style={styles.permTitle}>{t.cameraNeedsPermission}</Text>
+          <Text style={styles.permDesc}>{t.cameraNeedsPermissionDesc}</Text>
           <Pressable onPress={requestPermission} style={styles.permBtn}>
             <LinearGradient colors={[Colors.cobalt, Colors.cobaltDark]} style={styles.permBtnGradient}>
-              <Text style={styles.permBtnText}>Permitir acceso</Text>
+              <Text style={styles.permBtnText}>{t.cameraAllow}</Text>
             </LinearGradient>
           </Pressable>
           <Pressable onPress={onClose} style={styles.cancelLink}>
-            <Text style={styles.cancelLinkText}>Cancelar</Text>
+            <Text style={styles.cancelLinkText}>{t.cancel}</Text>
           </Pressable>
         </View>
       </Modal>
@@ -155,7 +152,6 @@ export function CameraModal({
           flash={flash}
         />
 
-        {/* Flash white overlay */}
         <Animated.View
           style={[StyleSheet.absoluteFill, styles.flashOverlay, { opacity: flashOpacity }]}
           pointerEvents="none"
@@ -175,7 +171,7 @@ export function CameraModal({
           <View style={styles.facingBadge}>
             <Feather name={facing === "front" ? "user" : "camera"} size={13} color={Colors.white} />
             <Text style={styles.facingText}>
-              {facing === "front" ? "Cámara delantera" : "Cámara trasera"}
+              {t.cameraLabel(facing)}
             </Text>
           </View>
 
@@ -190,14 +186,13 @@ export function CameraModal({
           </View>
         </LinearGradient>
 
-        {/* ICAO face guide overlay */}
+        {/* ICAO face guide */}
         <View style={styles.guide} pointerEvents="none">
           <View style={styles.oval}>
-            {/* Eye level indicator — ICAO: eyes ~35% from top */}
             <View style={styles.eyeLine}>
               <View style={styles.eyeLineDash} />
               <View style={styles.eyeLineLabel}>
-                <Text style={styles.eyeLineTxt}>OJOS</Text>
+                <Text style={styles.eyeLineTxt}>{t.eyeLineLabel}</Text>
               </View>
               <View style={styles.eyeLineDash} />
             </View>
@@ -205,17 +200,14 @@ export function CameraModal({
             <View style={[styles.marker, styles.markerBottom]} />
           </View>
 
-          {/* Static guide hints below oval */}
           <View style={styles.guideHints}>
-            <Text style={styles.guideTitle}>Centra tu cara en el óvalo</Text>
-            <Text style={styles.guideSubtitle}>
-              Ojos en la línea amarilla · Cabeza erguida · Fondo neutro
-            </Text>
+            <Text style={styles.guideTitle}>{t.cameraCenterFace}</Text>
+            <Text style={styles.guideSubtitle}>{t.cameraGuideHint}</Text>
           </View>
         </View>
 
-        {/* Static checklist (top-right corner) */}
-        <StaticChecklist />
+        {/* Static checklist */}
+        <StaticChecklist t={t} />
 
         {/* Bottom controls */}
         <LinearGradient
@@ -225,7 +217,7 @@ export function CameraModal({
           <Pressable onPress={flipCamera} style={styles.sideBtn} hitSlop={12}>
             <Feather name="refresh-cw" size={22} color={Colors.white} />
             <Text style={styles.sideBtnText}>
-              {facing === "front" ? "Trasera" : "Delantera"}
+              {facing === "front" ? t.rearLabel : t.frontLabel}
             </Text>
           </Pressable>
 
@@ -242,7 +234,7 @@ export function CameraModal({
           <View style={styles.sideBtn}>
             <Feather name="image" size={22} color="rgba(255,255,255,0.4)" />
             <Text style={[styles.sideBtnText, { color: "rgba(255,255,255,0.4)" }]}>
-              Galería
+              {t.galleryLabel}
             </Text>
           </View>
         </LinearGradient>
@@ -251,28 +243,26 @@ export function CameraModal({
   );
 }
 
-// ── Static checklist — always visible ────────────────────────────────────────
-function StaticChecklist() {
+function StaticChecklist({ t }: { t: ReturnType<typeof useLang>["t"] }) {
   const tips = [
-    { id: "face",   label: "Rostro visible" },
-    { id: "dist",   label: "Distancia correcta" },
-    { id: "angle",  label: "Cabeza recta" },
-    { id: "center", label: "Centrado" },
+    { id: "face",   label: t.checkFaceVisible },
+    { id: "dist",   label: t.checkDistance },
+    { id: "angle",  label: t.checkHeadStraight },
+    { id: "center", label: t.checkCentered },
   ];
 
   return (
     <View style={styles.checklist}>
-      {tips.map((t) => (
-        <View key={t.id} style={styles.checkRow}>
+      {tips.map((tip) => (
+        <View key={tip.id} style={styles.checkRow}>
           <Feather name="circle" size={12} color="rgba(255,255,255,0.55)" />
-          <Text style={styles.checkLabel}>{t.label}</Text>
+          <Text style={styles.checkLabel}>{tip.label}</Text>
         </View>
       ))}
     </View>
   );
 }
 
-// ── Constants & styles ────────────────────────────────────────────────────────
 const OVAL_W = 220;
 const OVAL_H = 290;
 const EYE_TOP_PCT = 0.35;

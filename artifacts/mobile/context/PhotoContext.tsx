@@ -17,6 +17,8 @@ export interface ProcessedPhoto {
   countryName: string;
   status: "pending" | "processing" | "done" | "error";
   errorMessage?: string;
+  /** Optional hint shown in the processing screen (e.g. "Server is busy, retrying...") */
+  processingMessage?: string;
   createdAt: number;
   validationResults?: ValidationResult;
 }

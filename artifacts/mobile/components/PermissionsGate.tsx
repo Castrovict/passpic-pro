@@ -13,12 +13,13 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
+import { useLang } from "@/context/LangContext";
 
 interface Permission {
   key: "camera" | "media";
   icon: string;
-  title: string;
-  description: string;
+  titleKey: "permCamera" | "permPhotos";
+  descKey: "permCameraDesc" | "permPhotosDesc";
   required: boolean;
   granted: boolean;
   checking: boolean;
@@ -30,6 +31,7 @@ interface PermissionsGateProps {
 
 export function PermissionsGate({ onGranted }: PermissionsGateProps) {
   const insets = useSafeAreaInsets();
+  const { t } = useLang();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
   const bottomPad = isWeb ? 34 : insets.bottom;
@@ -38,9 +40,8 @@ export function PermissionsGate({ onGranted }: PermissionsGateProps) {
     {
       key: "camera",
       icon: "camera",
-      title: "Cámara",
-      description:
-        "Para tomar fotos directamente desde la app y generar tu foto de pasaporte.",
+      titleKey: "permCamera",
+      descKey: "permCameraDesc",
       required: true,
       granted: false,
       checking: false,
@@ -48,9 +49,8 @@ export function PermissionsGate({ onGranted }: PermissionsGateProps) {
     {
       key: "media",
       icon: "image",
-      title: "Fotos y Galería",
-      description:
-        "Para seleccionar fotos existentes de tu galería y guardar tus fotos de pasaporte.",
+      titleKey: "permPhotos",
+      descKey: "permPhotosDesc",
       required: true,
       granted: false,
       checking: false,
@@ -59,7 +59,6 @@ export function PermissionsGate({ onGranted }: PermissionsGateProps) {
 
   const [allGranted, setAllGranted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
 
   useEffect(() => {
     checkExistingPermissions();
@@ -158,18 +157,13 @@ export function PermissionsGate({ onGranted }: PermissionsGateProps) {
         <View style={styles.iconWrap}>
           <Feather name="shield" size={36} color={Colors.white} />
         </View>
-        <Text style={styles.title}>Permisos necesarios</Text>
-        <Text style={styles.subtitle}>
-          PassPic PRO necesita los siguientes permisos para funcionar correctamente.
-          Tu privacidad está protegida — nunca compartimos tus fotos.
-        </Text>
+        <Text style={styles.title}>{t.permRequired}</Text>
+        <Text style={styles.subtitle}>{t.permDesc}</Text>
       </View>
 
       <View style={styles.permList}>
-        {permissions.map((perm, i) => (
-          <View
-            key={perm.key}
-          >
+        {permissions.map((perm) => (
+          <View key={perm.key}>
             <Pressable
               onPress={() => !perm.granted && !perm.checking && requestPermission(perm.key)}
               style={({ pressed }) => [
@@ -193,14 +187,14 @@ export function PermissionsGate({ onGranted }: PermissionsGateProps) {
 
               <View style={styles.permInfo}>
                 <View style={styles.permTitleRow}>
-                  <Text style={styles.permTitle}>{perm.title}</Text>
+                  <Text style={styles.permTitle}>{t[perm.titleKey]}</Text>
                   {perm.required && !perm.granted && (
                     <View style={styles.requiredTag}>
-                      <Text style={styles.requiredText}>Requerido</Text>
+                      <Text style={styles.requiredText}>{t.required}</Text>
                     </View>
                   )}
                 </View>
-                <Text style={styles.permDesc}>{perm.description}</Text>
+                <Text style={styles.permDesc}>{t[perm.descKey]}</Text>
               </View>
 
               <View style={styles.permStatus}>
@@ -225,7 +219,7 @@ export function PermissionsGate({ onGranted }: PermissionsGateProps) {
         {allGranted ? (
           <View style={styles.allGrantedRow}>
             <Feather name="check-circle" size={20} color={Colors.success} />
-            <Text style={styles.allGrantedText}>Todos los permisos otorgados</Text>
+            <Text style={styles.allGrantedText}>{t.allGranted}</Text>
           </View>
         ) : (
           <Pressable
@@ -242,14 +236,12 @@ export function PermissionsGate({ onGranted }: PermissionsGateProps) {
               style={styles.grantBtnGradient}
             >
               <Feather name="unlock" size={18} color={Colors.white} />
-              <Text style={styles.grantBtnText}>Otorgar permisos</Text>
+              <Text style={styles.grantBtnText}>{t.grantPerms}</Text>
             </LinearGradient>
           </Pressable>
         )}
 
-        <Text style={styles.privacyNote}>
-          Puedes cambiar estos permisos en cualquier momento desde los Ajustes de tu dispositivo.
-        </Text>
+        <Text style={styles.privacyNote}>{t.privacyNote}</Text>
       </View>
     </View>
   );

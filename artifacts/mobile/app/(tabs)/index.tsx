@@ -4,7 +4,7 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, ErrorBoundaryProps } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Alert,
   Platform,
@@ -14,6 +14,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { COUNTRY_FORMATS, POPULAR_COUNTRIES } from "@/constants/countries";
@@ -44,6 +45,15 @@ export default function CameraScreen() {
     COUNTRY_FORMATS.find((c) => c.code === code)!
   ).filter(Boolean);
 
+  // Close camera modal when user navigates away from this tab (saves battery)
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setShowCameraModal(false);
+      };
+    }, [])
+  );
+
   const toggleCamera = () => {
     Haptics.selectionAsync();
     setCameraFacing((prev) => (prev === "front" ? "back" : "front"));
@@ -67,10 +77,8 @@ export default function CameraScreen() {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
         Alert.alert(
-          "Acceso a Fotos",
-          perm.canAskAgain
-            ? "Se necesita permiso para acceder a tu galería."
-            : "Activa el acceso a fotos en Ajustes > PassPic PRO para continuar."
+          t.photoAccessTitle,
+          perm.canAskAgain ? t.photoAccessNeeded : t.photoAccessSettings
         );
         return;
       }
@@ -106,7 +114,9 @@ export default function CameraScreen() {
       let finalUri = uri;
 
       if (hasRemoveBgKey()) {
-        const bgResult = await removeBackground(uri);
+        const bgResult = await removeBackground(uri, () => {
+          updatePhoto(id, { processingMessage: t.serverBusy });
+        });
         if (bgResult.success) {
           finalUri = bgResult.uri;
         }
@@ -117,6 +127,7 @@ export default function CameraScreen() {
         status: "done",
         processedUri: finalUri,
         validationResults: validation,
+        processingMessage: undefined,
       });
     } catch (e) {
       const validation = simulateValidation(uri);
@@ -124,6 +135,7 @@ export default function CameraScreen() {
         status: "done",
         processedUri: uri,
         validationResults: validation,
+        processingMessage: undefined,
       });
     } finally {
       setIsProcessing(false);

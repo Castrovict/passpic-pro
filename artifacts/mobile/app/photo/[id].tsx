@@ -130,6 +130,8 @@ function PhotoDetailScreenInner() {
       }
       await FileSystem.copyAsync({ from: shareUri, to: dest });
       await MediaLibrary.saveToLibraryAsync(dest);
+      // Clean up the temp copy — the original processedUri stays intact
+      FileSystem.deleteAsync(dest, { idempotent: true }).catch(() => {});
       setSavedOk(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setTimeout(() => setSavedOk(false), 3000);
@@ -242,6 +244,9 @@ function PhotoDetailScreenInner() {
         {isProcessing ? (
           <View style={styles.processingCard}>
             <ProcessingAnimation step={processingStep} />
+            {!!photo.processingMessage && (
+              <Text style={styles.processingHintText}>{photo.processingMessage}</Text>
+            )}
           </View>
         ) : (
           <>
@@ -750,6 +755,15 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 4,
     paddingHorizontal: 20,
+  },
+  processingHintText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    color: Colors.muted,
+    textAlign: "center",
+    marginTop: 8,
+    marginBottom: 16,
+    paddingHorizontal: 16,
   },
   photoFrame: {
     alignItems: "center",
