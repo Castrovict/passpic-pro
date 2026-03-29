@@ -14,6 +14,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -96,9 +97,7 @@ function PhotoDetailScreenInner() {
         const msg = lang === "es"
           ? `Mi foto de pasaporte para ${photo?.countryName} — Generada con PassPic PRO`
           : `My passport photo for ${photo?.countryName} — Generated with PassPic PRO`;
-        await import("react-native").then(({ Share }) =>
-          Share.share({ message: msg })
-        );
+        await Share.share({ message: msg });
       }
     } catch (e: any) {
       if (!e?.message?.includes("cancel")) {
@@ -169,10 +168,10 @@ function PhotoDetailScreenInner() {
     const score = photo.validationResults.score;
     const msg = t.icaoShareText(country.name, score);
     try {
-      await import("react-native").then(({ Share }) =>
-        Share.share({ message: msg, title: t.icaoReportTitle })
-      );
-    } catch {}
+      await Share.share({ message: msg, title: t.icaoReportTitle });
+    } catch (e: any) {
+      console.warn("[ShareIcao] error:", e?.message);
+    }
   };
 
   const handleEditorApply = useCallback(
