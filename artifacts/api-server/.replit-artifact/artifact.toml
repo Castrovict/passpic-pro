@@ -13,6 +13,7 @@ paths = ["/api"]
 run = "pnpm --filter @workspace/api-server run dev"
 
 [services.production]
+target = "vm"
 build = "pnpm --filter @workspace/api-server run build"
 
 [services.production.run]
