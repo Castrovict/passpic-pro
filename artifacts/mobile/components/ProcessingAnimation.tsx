@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import Colors from "@/constants/colors";
 import { useLang } from "@/context/LangContext";
-import { hasRemoveBgKey } from "@/utils/removeBackground";
+
 
 const STEPS_EN = [
   "Detecting face...",
@@ -27,8 +27,6 @@ interface ProcessingAnimationProps {
 export function ProcessingAnimation({ step = 0 }: ProcessingAnimationProps) {
   const { lang } = useLang();
   const STEPS = lang === "es" ? STEPS_ES : STEPS_EN;
-  const aiEnabled = hasRemoveBgKey();
-
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.95)).current;
   const rotate = useRef(new Animated.Value(0)).current;
@@ -71,11 +69,9 @@ export function ProcessingAnimation({ step = 0 }: ProcessingAnimationProps) {
         </View>
       </View>
 
-      {aiEnabled && (
-        <View style={styles.aiBadge}>
-          <Text style={styles.aiBadgeText}>✦ AI</Text>
-        </View>
-      )}
+      <View style={styles.aiBadge}>
+        <Text style={styles.aiBadgeText}>✦ AI</Text>
+      </View>
 
       <Animated.Text style={[styles.stepText, { opacity }]}>
         {STEPS[Math.min(step, STEPS.length - 1)]}

@@ -26,12 +26,13 @@ import { CameraModal } from "@/components/CameraModal";
 import { useLang } from "@/context/LangContext";
 import { useCameraPermissions } from "expo-camera";
 import { AdBanner } from "@/components/AdBanner";
-import { removeBackground, hasRemoveBgKey } from "@/utils/removeBackground";
+import { useBgRemoval } from "@/context/BgRemovalContext";
 
 export default function CameraScreen() {
   const insets = useSafeAreaInsets();
   const { t, lang, setLang } = useLang();
   const { selectedCountry, setSelectedCountry, addPhoto, updatePhoto } = usePhotos();
+  const { removeBackgroundFromUri } = useBgRemoval();
   const [isProcessing, setIsProcessing] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<"front" | "back">("front");
   const [showCameraModal, setShowCameraModal] = useState(false);
@@ -113,13 +114,9 @@ export default function CameraScreen() {
     try {
       let finalUri = uri;
 
-      if (hasRemoveBgKey()) {
-        const bgResult = await removeBackground(uri, () => {
-          updatePhoto(id, { processingMessage: t.serverBusy });
-        });
-        if (bgResult.success) {
-          finalUri = bgResult.uri;
-        }
+      const bgResult = await removeBackgroundFromUri(uri);
+      if (bgResult.success) {
+        finalUri = bgResult.uri;
       }
 
       const validation = simulateValidation(uri);

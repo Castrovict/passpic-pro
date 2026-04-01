@@ -24,6 +24,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ConsentModal } from "@/components/ConsentModal";
 import { PhotoProvider } from "@/context/PhotoContext";
 import { LangProvider } from "@/context/LangContext";
+import { BgRemovalProvider } from "@/context/BgRemovalContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -165,11 +166,13 @@ export default function RootLayout() {
           <GestureHandlerRootView style={{ flex: 1 }}>
             <LangProvider>
               <PhotoProvider>
-                <RootLayoutNav />
-                <ConsentModal />
-                {!splashDone && (
-                  <AnimatedSplash onDone={() => setSplashDone(true)} />
-                )}
+                <BgRemovalProvider>
+                  <RootLayoutNav />
+                  <ConsentModal />
+                  {!splashDone && (
+                    <AnimatedSplash onDone={() => setSplashDone(true)} />
+                  )}
+                </BgRemovalProvider>
               </PhotoProvider>
             </LangProvider>
           </GestureHandlerRootView>
