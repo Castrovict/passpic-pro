@@ -39,7 +39,7 @@ const BG_REMOVAL_HTML = `<!DOCTYPE html>
 </head>
 <body>
 <script type="module">
-  import { removeBackground as doRemoveBg } from "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/bundle.mjs";
+  import { removeBackground as doRemoveBg } from "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/index.mjs";
 
   function sendToNative(obj) {
     window.ReactNativeWebView.postMessage(JSON.stringify(obj));
